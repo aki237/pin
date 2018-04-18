@@ -2,20 +2,19 @@ package pinlib
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
-
-	"github.com/songgao/water"
 )
 
 // Server struct contains all fields for exchanging packets to the client through a TCP connection
 type Server struct {
 	server net.Listener
-	iface  *water.Interface
+	iface  io.ReadWriter
 }
 
 // NewServer method is used to create a new server struct with a given listening address
-func NewServer(addr string, iface *water.Interface) (*Server, error) {
+func NewServer(addr string, iface io.ReadWriter) (*Server, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err

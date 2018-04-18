@@ -3,17 +3,16 @@ package pinlib
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
-
-	"github.com/songgao/water"
 )
 
 // Client struct contains all fields for exchanging packets to the server through a TCP connection
 type Client struct {
 	// Unexported
-	connections uint32           // connections holds info about how many connections to be made to remote pin
-	iface       *water.Interface // handler for the tunneling interface
+	connections uint32        // connections holds info about how many connections to be made to remote pin
+	iface       io.ReadWriter // handler for the tunneling interface
 
 	// Exported
 	Remote string       // Remote is the IP:PORT combination of the remote pin
@@ -21,7 +20,7 @@ type Client struct {
 }
 
 // NewClient is used to create a new client which makes 'connections' connections to the remote pin.
-func NewClient(remote string, connections uint32, iface *water.Interface) (*Client, error) {
+func NewClient(remote string, connections uint32, iface io.ReadWriter) (*Client, error) {
 	// if number of connections is 0 it is pointless to run this VPN
 	if connections == 0 {
 		return nil, errors.New("connections should be greater than 0")

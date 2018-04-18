@@ -3,18 +3,18 @@ package pinlib
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 
 	"github.com/golang/snappy"
-	"github.com/songgao/water"
 )
 
 // Exchanger is the main struct used to enable IP packet transfer between 2 peers
 // This is the basis for functionality of both the client and server
 type Exchanger struct {
 	conn    net.Conn
-	iface   *water.Interface
+	iface   io.ReadWriter
 	running bool
 }
 
