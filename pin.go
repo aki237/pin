@@ -34,11 +34,6 @@ func RunPin(mode bool, addr, ifaceName, tunaddr, gw string) {
 			fmt.Println(err)
 			return
 		}
-		err = SetupServer(handler.(*pinlib.Server), ifaceName, tunaddr)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
 	}
 
 	err = handler.Start()
