@@ -133,7 +133,7 @@ func SetupLink(ifaceName string) error {
 	}
 
 	// set the mtu
-	err = netlink.LinkSetMTU(link, 1500)
+	err = netlink.LinkSetMTU(link, pinlib.MTU)
 	if err != nil {
 		return err
 	}
@@ -180,8 +180,8 @@ func SetupIPTables(ifaceName string) error {
 	return err
 }
 
-func SetupClient(client *pinlib.Client, addr, ifaceName, tunaddr, gw string) {
-	client.Hook = func() error {
+func SetupClient(client *pinlib.Client, addr, ifaceName string) {
+	client.Hook = func(ipp, gw string) error {
 		err := SkipRemoteRouting(addr)
 		if err != nil {
 			return err
@@ -192,7 +192,7 @@ func SetupClient(client *pinlib.Client, addr, ifaceName, tunaddr, gw string) {
 			return err
 		}
 
-		err = SetupAddr(ifaceName, tunaddr, gw)
+		err = SetupAddr(ifaceName, ipp, gw)
 		if err != nil {
 			return err
 		}

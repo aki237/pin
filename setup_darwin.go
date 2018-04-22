@@ -7,9 +7,9 @@ import (
 	"./pinlib"
 )
 
-func SetupClient(client *pinlib.Client, addr, ifaceName, tunaddr, gw string) {
-	client.Hook = func() error {
-		fmt.Println("Not implemented...")
+func SetupClient(client *pinlib.Client, addr, ifaceName string) {
+	client.Hook = func(ipp string, gw string) error {
+		fmt.Println("Not implemented...", ipp, gw)
 		return nil
 	}
 }

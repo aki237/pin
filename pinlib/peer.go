@@ -5,4 +5,9 @@ package pinlib
 // servers are written in the same program.
 type Peer interface {
 	Start() error
+	Close()
 }
+
+var (
+	MTU int = 1000
+)

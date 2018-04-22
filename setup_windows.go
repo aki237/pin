@@ -8,7 +8,7 @@ import (
 )
 
 func SetupClient(client *pinlib.Client, addr, ifaceName, tunaddr, gw string) {
-	client.Hook = func() error {
+	client.Hook = func(ipp string, gw string) error {
 		return nil
 	}
 }

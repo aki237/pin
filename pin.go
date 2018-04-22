@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"./pinlib"
 )
 
-func RunPin(mode bool, addr, ifaceName, tunaddr, gw string) {
+func RunPin(mode bool, addr, ifaceName, tunaddr string) {
 
 	iface := NewTUN(&ifaceName)
 	defer iface.Close()
@@ -15,16 +19,20 @@ func RunPin(mode bool, addr, ifaceName, tunaddr, gw string) {
 	var err error
 
 	if !mode {
-		handler, err = pinlib.NewClient(addr, 1, iface)
+		handler = pinlib.NewClient(addr, iface)
+
+		SetupClient(handler.(*pinlib.Client), addr, ifaceName)
+
+	} else {
+		var ipNet *net.IPNet
+		var ip net.IP
+		ip, ipNet, err = net.ParseCIDR(tunaddr)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-
-		SetupClient(handler.(*pinlib.Client), addr, ifaceName, tunaddr, gw)
-
-	} else {
-		handler, err = pinlib.NewServer(addr, iface)
+		ipNet.IP = ip
+		handler, err = pinlib.NewServer(addr, iface, ipNet)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -36,12 +44,46 @@ func RunPin(mode bool, addr, ifaceName, tunaddr, gw string) {
 		}
 	}
 
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+
+		fmt.Println("\n\nTyring to exit gracefully\n\n")
+
+		os.Exit(1)
+	}()
+
 	err = handler.Start()
 	if err != nil {
 		fmt.Println(err)
-		return
 	}
 
 	iface.Close()
 
+	fmt.Println("\n\n\n\n\nerr\n\n\n\n\n")
 }
+
+/*
+func RevertRemoteRouting(addr string) error {
+	if runtime.GOOS != "linux" {
+		fmt.Println("Not implemented yet")
+		return nil
+	}
+	ta, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(ta.IP)
+
+	rs, err := netlink.RouteGet(ta.IP)
+	if err != nil {
+		return err
+	}
+
+	rs[0].Src = nil
+
+	return netlink.RouteDel(&rs[0])
+}
+*/

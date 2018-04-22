@@ -3,30 +3,37 @@ package main
 import (
 	"flag"
 	"fmt"
+	"./pinlib"
 )
 
 func main() {
-	mode := flag.Bool("s", false, "switch on server mode instear of client")
-	addr := flag.String("addr", "", "(client mode) address of the server\n(server mode) local listening address")
+	// server only options
+	mode := flag.Bool("s", false, "switch on server mode instead of client")
+	dhcp := flag.String("dhcp", "", "(server mode) info for dhcp server")
+
+	// common options
 	ifaceName := flag.String("i", "pin0", "name of the tunneling network interface")
-	tunaddr := flag.String("tunaddr", "", "IP address of the tunneling network interface")
-	gw := flag.String("gw", "", "(client mode only) IP address of the remote tunnel interface which acts as the routing gateway")
+	mtu := flag.Int("mtu", 1500, "specify MTU of the tunneling Device")
+
+
+	// client options
+	addr := flag.String("addr", "", "IP address of the tunneling network interface")
+
+
 	flag.Parse()
 
-	if *addr == "" {
-		fmt.Println("Error::Commandline::Parse : not a valid address")
-		return
-	}
+	pinlib.MTU = *mtu
 
-	if *tunaddr == "" {
+
+	if *dhcp == "" && *mode {
 		fmt.Println("Error::Commandline::Parse : no IP address for the tunnel interface is provided")
 		return
 	}
 
-	if *mode && *gw != "" {
-		fmt.Println("Error::Commandline::Parse : gateway is only needed in the client side")
+	if !*mode && *addr == "" {
+		fmt.Println("Error::Commandline::Parse : no remote server specified")
 		return
 	}
 
-	RunPin(*mode, *addr, *ifaceName, *tunaddr, *gw)
+	RunPin(*mode, *addr, *ifaceName, *dhcp)
 }

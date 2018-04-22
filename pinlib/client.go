@@ -1,32 +1,29 @@
 package pinlib
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"net"
+	"log"
 	"sync"
 )
 
 // Client struct contains all fields for exchanging packets to the server through a TCP connection
 type Client struct {
 	// Unexported
-	connections uint32        // connections holds info about how many connections to be made to remote pin
-	iface       io.ReadWriter // handler for the tunneling interface
+	iface io.ReadWriter // handler for the tunneling interface
 
 	// Exported
-	Remote string       // Remote is the IP:PORT combination of the remote pin
-	Hook   func() error // Hook is a function that runs immediately after the TCP connections are made
+	Remote string                    // Remote is the IP:PORT combination of the remote pin
+	Hook   func(ip, gw string) error // Hook is a function that runs immediately after the TCP connection is made
+	close  chan bool
 }
 
-// NewClient is used to create a new client which makes 'connections' connections to the remote pin.
-func NewClient(remote string, connections uint32, iface io.ReadWriter) (*Client, error) {
+// NewClient is used to create a new client which makes a connection to the remote pin.
+func NewClient(remote string, iface io.ReadWriter) *Client {
 	// if number of connections is 0 it is pointless to run this VPN
-	if connections == 0 {
-		return nil, errors.New("connections should be greater than 0")
-	}
-
-	return &Client{iface: iface, Remote: remote, connections: connections, Hook: func() error { return nil }}, nil
+	return &Client{iface: iface, Remote: remote, Hook: func(ip, gw string) error { return nil }, close: make(chan bool)}
 }
 
 // Start method makes TCP connections and starts the packet exchange from the local tunneling interface to the remote interface.
@@ -35,29 +32,81 @@ func (c *Client) Start() error {
 	// wait group to wait for all go routines to complete
 	wg := &sync.WaitGroup{}
 
-	made := 0
-	for i := uint32(0); i < c.connections; i++ {
-		conn, err := net.Dial("tcp", c.Remote)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
+	ipp := make([]byte, 9)
 
-		ex := &Exchanger{conn: conn, iface: c.iface}
-		wg.Add(1)
-		go ex.Start(wg)
-		made++
+	cert, err := tls.LoadX509KeyPair("enc.pem", "enc.key")
+	if err != nil {
+		log.Fatalf("server: loadkeys: %s", err)
 	}
-	fmt.Println("Connections made : ", made)
+	config := tls.Config{Certificates: []tls.Certificate{cert}}
+	config.InsecureSkipVerify = true
+
+	conn, err := tls.Dial("tcp", c.Remote, &config)
+	if err != nil {
+		return err
+	}
+
+	n, err := conn.Read(ipp)
+	if err != nil {
+		return err
+	}
+
+	if n == 1 && ipp[0] == 0 {
+		return errors.New("no IPs available on the server")
+	}
+
+	if n != 9 {
+		return errors.New("invalid handshake")
+	}
+
+	conn.Write([]byte{1})
+
+	fmt.Println("Connection Successful... IP Lease done : ", ipp)
+
+	cc := &CounterConn{conn: conn}
+
+	ex := &Exchanger{conn: cc, iface: c.iface}
+
+	go func() {
+		for !<-c.close {
+		}
+		conn.Close()
+	}()
+
+	wg.Add(1)
+	go ex.Start(wg)
 
 	// this is where the hook function is run.
 	// Generally for a pinlib based VPN program, this Hook function should be configured with IP routing and device setup
-	err := c.Hook()
+	err = c.Hook(fmt.Sprintf("%d.%d.%d.%d/%d", ipp[0], ipp[1], ipp[2], ipp[3], ipp[4]),
+		fmt.Sprintf("%d.%d.%d.%d", ipp[5], ipp[6], ipp[7], ipp[8]))
 	if err != nil {
 		return err
 	}
 
 	wg.Wait()
-	fmt.Println("Connections Done : ", made)
+
+	conn.Close()
+
 	return nil
+}
+
+func (c *Client) Close() {
+	c.close <- true
+}
+
+type CounterConn struct {
+	conn              io.ReadWriter
+	BytesIn, BytesOut uint64 // transfer numbers
+}
+
+func (cc *CounterConn) Read(p []byte) (int, error) {
+	n, err := cc.conn.Read(p)
+	cc.BytesIn += uint64(n)
+	return n, err
+}
+
+func (cc *CounterConn) Write(p []byte) (int, error) {
+	cc.BytesOut += uint64(len(p))
+	return cc.conn.Write(p)
 }
