@@ -7,7 +7,7 @@ import (
 	"./pinlib"
 )
 
-func SetupClient(client *pinlib.Client, addr, ifaceName, tunaddr, gw string) {
+func SetupClient(client *pinlib.Client, addr, ifaceName string) {
 	client.Hook = func(ipp string, gw string) error {
 		return nil
 	}
