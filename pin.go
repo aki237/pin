@@ -49,7 +49,7 @@ func RunPin(mode bool, addr, ifaceName, tunaddr, pub, key string) {
 		<-c
 
 		fmt.Println("\n\nTyring to exit gracefully\n\n")
-
+		StopClient(addr)
 		os.Exit(1)
 	}()
 

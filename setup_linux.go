@@ -214,3 +214,23 @@ func SetupServer(server *pinlib.Server, ifaceName, tunaddr string) error {
 
 	return SetupIPTables(ifaceName)
 }
+
+func StopClient(addr string) {
+	gw, err := getDefaultGateway(addr)
+	if err != nil {
+		return
+	}
+
+	ta, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return
+	}
+
+	err = netlink.RouteDel(&netlink.Route{
+		Dst: &net.IPNet{
+			IP:   ta.IP,
+			Mask: net.IPv4Mask(255, 255, 255, 255),
+		},
+		Gw: gw,
+	})
+}

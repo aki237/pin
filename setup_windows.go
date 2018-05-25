@@ -17,3 +17,7 @@ func SetupServer(server *pinlib.Server, ifaceName, tunaddr string) error {
 	fmt.Println("Not implemented...")
 	return nil
 }
+
+func StopClient(addr string) {
+	fmt.Println("Not implemented")
+}
