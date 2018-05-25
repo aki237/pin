@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/songgao/water"
@@ -16,4 +17,8 @@ func NewTUN(name *string) *water.Interface {
 	}
 	*name = iface.Name()
 	return iface
+}
+
+func StopClient(addr string) {
+	fmt.Println("Not implemented")
 }

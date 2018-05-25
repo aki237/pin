@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+
 	"./pinlib"
 )
 
@@ -14,16 +15,15 @@ func main() {
 	// common options
 	ifaceName := flag.String("i", "pin0", "name of the tunneling network interface")
 	mtu := flag.Int("mtu", 1500, "specify MTU of the tunneling Device")
-
-
-	// client options
+	pub := flag.String("pub", "enc.pem", "Pubic key")
+	key := flag.String("priv", "enc.key", "Private key")
 	addr := flag.String("addr", "", "IP address of the tunneling network interface")
 
+	// client options
 
 	flag.Parse()
 
 	pinlib.MTU = *mtu
-
 
 	if *dhcp == "" && *mode {
 		fmt.Println("Error::Commandline::Parse : no IP address for the tunnel interface is provided")
@@ -35,5 +35,5 @@ func main() {
 		return
 	}
 
-	RunPin(*mode, *addr, *ifaceName, *dhcp)
+	RunPin(*mode, *addr, *ifaceName, *dhcp, *pub, *key)
 }

@@ -15,11 +15,13 @@ type Server struct {
 	server  net.Listener
 	iface   io.ReadWriter
 	running bool
+	pub     string
+	key     string
 }
 
 // NewServer method is used to create a new server struct with a given listening address
-func NewServer(addr string, iface io.ReadWriter, gw *net.IPNet) (*Server, error) {
-	cert, err := tls.LoadX509KeyPair("enc.pem", "enc.key")
+func NewServer(addr string, iface io.ReadWriter, gw *net.IPNet, pub, key string) (*Server, error) {
+	cert, err := tls.LoadX509KeyPair(pub, key)
 	if err != nil {
 		log.Fatalf("server: loadkeys: %s", err)
 	}
