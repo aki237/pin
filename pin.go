@@ -10,8 +10,7 @@ import (
 	"./pinlib"
 )
 
-func RunPin(mode bool, addr, ifaceName, tunaddr string) {
-
+func RunPin(mode bool, addr, ifaceName, tunaddr, pub, key string) {
 	iface := NewTUN(&ifaceName)
 	defer iface.Close()
 
@@ -19,7 +18,7 @@ func RunPin(mode bool, addr, ifaceName, tunaddr string) {
 	var err error
 
 	if !mode {
-		handler = pinlib.NewClient(addr, iface)
+		handler = pinlib.NewClient(addr, iface, pub, key)
 
 		SetupClient(handler.(*pinlib.Client), addr, ifaceName)
 
@@ -32,7 +31,7 @@ func RunPin(mode bool, addr, ifaceName, tunaddr string) {
 			return
 		}
 		ipNet.IP = ip
-		handler, err = pinlib.NewServer(addr, iface, ipNet)
+		handler, err = pinlib.NewServer(addr, iface, ipNet, pub, key)
 		if err != nil {
 			fmt.Println(err)
 			return

@@ -13,7 +13,8 @@ import (
 type Client struct {
 	// Unexported
 	iface io.ReadWriter // handler for the tunneling interface
-
+	pub   string
+	key   string
 	// Exported
 	Remote string                    // Remote is the IP:PORT combination of the remote pin
 	Hook   func(ip, gw string) error // Hook is a function that runs immediately after the TCP connection is made
@@ -21,9 +22,10 @@ type Client struct {
 }
 
 // NewClient is used to create a new client which makes a connection to the remote pin.
-func NewClient(remote string, iface io.ReadWriter) *Client {
+func NewClient(remote string, iface io.ReadWriter, pem, priv string) *Client {
 	// if number of connections is 0 it is pointless to run this VPN
-	return &Client{iface: iface, Remote: remote, Hook: func(ip, gw string) error { return nil }, close: make(chan bool)}
+
+	return &Client{iface: iface, Remote: remote, pub: pem, key: priv, Hook: func(ip, gw string) error { return nil }, close: make(chan bool)}
 }
 
 // Start method makes TCP connections and starts the packet exchange from the local tunneling interface to the remote interface.
@@ -34,9 +36,9 @@ func (c *Client) Start() error {
 
 	ipp := make([]byte, 9)
 
-	cert, err := tls.LoadX509KeyPair("enc.pem", "enc.key")
+	cert, err := tls.LoadX509KeyPair(c.pub, c.key)
 	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
+		log.Fatalf("client: loadkeys: %s", err)
 	}
 	config := tls.Config{Certificates: []tls.Certificate{cert}}
 	config.InsecureSkipVerify = true
