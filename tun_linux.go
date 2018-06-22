@@ -4,7 +4,7 @@ package main
 import (
 	"log"
 
-	"github.com/songgao/water"
+	"gitlab.com/sbioa1234/water"
 )
 
 func NewTUN(name *string) *water.Interface {
