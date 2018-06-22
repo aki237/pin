@@ -1,11 +1,11 @@
-// +build darwin
+// +build darwin dragonfly freebsd openbsd netbsd !linux
+
 package main
 
 import (
-	"fmt"
 	"log"
 
-	"github.com/songgao/water"
+	"gitlab.com/sbioa1234/water"
 )
 
 func NewTUN(name *string) *water.Interface {
@@ -17,8 +17,4 @@ func NewTUN(name *string) *water.Interface {
 	}
 	*name = iface.Name()
 	return iface
-}
-
-func StopClient(addr string) {
-	fmt.Println("Not implemented")
 }
