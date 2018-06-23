@@ -4,6 +4,7 @@ package pinlib
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"sync"
 
 	"github.com/golang/snappy"
@@ -44,6 +45,13 @@ func (p *Exchanger) incoming() {
 			return
 		}
 
+		// For openbsd, there is a additional tunnel header to be added.
+		// In this case, the tunnel being used is PPTP so the byte array 0,0,0,2 is used.
+		// See man 4 pppx and /usr/include/net/pipex.h (PIPEX_PROTO_PPTP)
+		if runtime.GOOS == "openbsd" {
+			packet = append([]byte{0, 0, 0, 2}, packet[:]...)
+			n = n + 4
+		}
 		p.iface.Write(packet[:n])
 	}
 
@@ -64,6 +72,13 @@ func (p *Exchanger) outgoing() {
 			fmt.Println("Outgoing_Read: ", err)
 			p.running = false
 			return
+		}
+
+		// In openbsd, there is a additional tunnel header to specify the protocol
+		// This had to be discarded before sending it to the remote.
+		if runtime.GOOS == "openbsd" {
+			packet = packet[4:]
+			n = n - 4
 		}
 
 		_, err = wr.Write(packet[:n])
