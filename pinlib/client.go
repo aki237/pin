@@ -75,16 +75,17 @@ func (c *Client) Start() error {
 		conn.Close()
 	}()
 
-	wg.Add(1)
-	go ex.Start(wg)
-
-	// this is where the hook function is run.
-	// Generally for a pinlib based VPN program, this Hook function should be configured with IP routing and device setup
 	err = c.Hook(fmt.Sprintf("%d.%d.%d.%d/%d", ipp[0], ipp[1], ipp[2], ipp[3], ipp[4]),
 		fmt.Sprintf("%d.%d.%d.%d", ipp[5], ipp[6], ipp[7], ipp[8]))
 	if err != nil {
 		return err
 	}
+
+	wg.Add(1)
+	go ex.Start(wg)
+
+	// this is where the hook function is run.
+	// Generally for a pinlib based VPN program, this Hook function should be configured with IP routing and device setup
 
 	wg.Wait()
 
