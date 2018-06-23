@@ -38,11 +38,13 @@ type NotifierConn struct {
 	io.ReadWriteCloser
 	ip   string
 	comm chan string
+	wg   *sync.WaitGroup
 }
 
 func (conn *NotifierConn) Notify() {
 	conn.ReadWriteCloser.Close()
 	conn.comm <- conn.ip
+	conn.wg.Done()
 }
 
 //
@@ -153,16 +155,14 @@ func (s *Server) Start() error {
 
 		mux.conn[string(lastIP)] = pw
 
-		ex := &Exchanger{conn: &NotifierConn{ReadWriteCloser: conn, ip: string(lastIP), comm: mux.sig}, iface: &ifaceClient{pr: pr, wr: s.iface, addr: p}}
+		ex := &Exchanger{conn: &NotifierConn{ReadWriteCloser: conn, ip: string(lastIP), comm: mux.sig, wg: wg}, iface: &ifaceClient{pr: pr, wr: s.iface, addr: p}}
 		//ex := &Exchanger{conn: conn, iface: s.iface}
 		wg.Add(1)
-		go ex.Start(wg)
+		go ex.Start()
 	}
 
 	fmt.Println("Closing existing connections...")
 	mux.Close()
-
-	wg.Wait()
 
 	return nil
 }

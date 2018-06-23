@@ -44,13 +44,17 @@ func RunPin(mode bool, addr, ifaceName, tunaddr, pub, key string) {
 	}
 
 	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGTSTP)
 	go func() {
-		<-c
-
-		fmt.Println("\n\nTyring to exit gracefully\n\n")
-		StopClient(addr)
-		os.Exit(1)
+		recdsig := <-c
+		switch recdsig {
+		case syscall.SIGTERM, os.Interrupt:
+			fmt.Println("\nReceived Ctrl-C")
+		case syscall.SIGTSTP:
+			fmt.Println("\nReceived Ctrl-Z. Suspend not supported.")
+		}
+		handler.Close()
+		fmt.Println("Exchanger Closed...")
 	}()
 
 	err = handler.Start()
@@ -59,30 +63,5 @@ func RunPin(mode bool, addr, ifaceName, tunaddr, pub, key string) {
 	}
 
 	iface.Close()
-
-	fmt.Println("\n\n\n\n\nerr\n\n\n\n\n")
+	StopClient(addr)
 }
-
-/*
-func RevertRemoteRouting(addr string) error {
-	if runtime.GOOS != "linux" {
-		fmt.Println("Not implemented yet")
-		return nil
-	}
-	ta, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(ta.IP)
-
-	rs, err := netlink.RouteGet(ta.IP)
-	if err != nil {
-		return err
-	}
-
-	rs[0].Src = nil
-
-	return netlink.RouteDel(&rs[0])
-}
-*/

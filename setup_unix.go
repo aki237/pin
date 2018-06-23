@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"runtime"
 	"syscall"
 
 	"./pinlib"
 	"golang.org/x/net/route"
 )
+
+var tunname string
 
 func getDefaultGatewayIP() (net.IP, error) {
 	routedata, err := route.FetchRIB(syscall.AF_INET, route.RIBTypeRoute, 0)
@@ -76,6 +79,7 @@ func SkipRemoteRouting(addr string) error {
 }
 
 func SetupAddr(ifaceName, ipp, gateway string) error {
+	tunname = ifaceName
 	cmd := exec.Command("ifconfig", ifaceName, ipp, gateway)
 	return cmd.Run()
 }
@@ -125,6 +129,17 @@ func StopClient(addr string) {
 	if err != nil {
 		fmt.Println("Route for remote server cannot be removed: ", err)
 		return
+	}
+
+	if runtime.GOOS != "dragonfly" {
+		cmd := exec.Command("ifconfig", tunname, "destroy")
+		err = cmd.Run()
+		if err != nil {
+			fmt.Println("Tunnel interface cannot be removed: ", err)
+			return
+		}
+
+		fmt.Println("Interface deleted:", tunname)
 	}
 
 	return

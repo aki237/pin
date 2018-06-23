@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	"sync"
 
 	"github.com/golang/snappy"
 )
@@ -19,11 +18,10 @@ type Exchanger struct {
 }
 
 // Start method starts the IP packet exchange between the configured interface and the TCP connection
-func (p *Exchanger) Start(wg *sync.WaitGroup) {
+func (p *Exchanger) Start() {
 	p.running = true
 	go p.outgoing()
 	p.incoming()
-	wg.Done()
 }
 
 // incoming method reads IP data from the TCP connection, decompresses it and writes it to the configured tunneling interface.
@@ -37,7 +35,9 @@ func (p *Exchanger) incoming() {
 	for p.running {
 		n, err := rd.Read(packet)
 		if err != nil {
-			fmt.Println("Incoming_Read: ", err)
+			if p.running {
+				fmt.Println("Incoming_Read: ", err)
+			}
 			if nc, ok := p.conn.(*NotifierConn); ok {
 				nc.Notify()
 			}
@@ -54,7 +54,6 @@ func (p *Exchanger) incoming() {
 		}
 		p.iface.Write(packet[:n])
 	}
-
 }
 
 // outgoing method reads IP data from the configured tunneling interface, compresses it and writes it to the TCP connection
@@ -66,7 +65,6 @@ func (p *Exchanger) outgoing() {
 	wr := snappy.NewWriter(p.conn)
 
 	for p.running {
-
 		n, err := p.iface.Read(packet)
 		if err != nil {
 			fmt.Println("Outgoing_Read: ", err)
@@ -83,7 +81,9 @@ func (p *Exchanger) outgoing() {
 
 		_, err = wr.Write(packet[:n])
 		if err != nil {
-			fmt.Println("Outgoing_Write: ", err)
+			if p.running {
+				fmt.Println("Outgoing_Write: ", err)
+			}
 			if nc, ok := p.conn.(*NotifierConn); ok {
 				nc.Notify()
 			}
@@ -91,4 +91,6 @@ func (p *Exchanger) outgoing() {
 			return
 		}
 	}
+
+	fmt.Println("Exchanger : closing the outgoing txn")
 }
