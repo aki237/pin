@@ -1,10 +1,8 @@
 package pinlib
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"sync"
 )
@@ -15,23 +13,18 @@ type Server struct {
 	server  net.Listener
 	iface   io.ReadWriter
 	running bool
-	pub     string
-	key     string
+	secret  [40]byte
+	close   chan bool
 }
 
 // NewServer method is used to create a new server struct with a given listening address
-func NewServer(addr string, iface io.ReadWriter, gw *net.IPNet, pub, key string) (*Server, error) {
-	cert, err := tls.LoadX509KeyPair(pub, key)
-	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
-	}
-	config := tls.Config{Certificates: []tls.Certificate{cert}}
-	ln, err := tls.Listen("tcp", addr, &config)
+func NewServer(addr string, iface io.ReadWriter, gw *net.IPNet, secret [40]byte) (*Server, error) {
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Server{server: ln, iface: iface, gw: gw, running: false}, nil
+	return &Server{server: ln, iface: iface, gw: gw, running: false, secret: secret, close: make(chan bool)}, nil
 }
 
 type NotifierConn struct {
@@ -47,7 +40,6 @@ func (conn *NotifierConn) Notify() {
 	conn.wg.Done()
 }
 
-//
 func (s *Server) nextIP(lastIP net.IP) (net.IP, bool) {
 	for i := len(lastIP) - 1; i >= 0; i-- {
 		lastIP[i]++
@@ -92,83 +84,99 @@ func (s *Server) Start() error {
 	copy(lastIP, s.gw.IP.To4())
 
 	fmt.Println(lastIP)
-
-	for s.running {
-		conn, err := s.server.Accept()
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		var available bool
-		// handshakeIPs Here
-		lastIP, available = s.nextIP(lastIP)
-		if !available {
-			xx := make(net.IP, 4)
-			copy(xx, s.gw.IP.To4())
-			var found bool
-			var avail bool = false
-			for {
-				xx, found = s.nextIP(xx)
-				if !found {
-					break
-				}
-				if !foundInMap(string(xx), mux.conn) {
-					lastIP = xx.To4()
-					avail = true
-					break
-				}
-			}
-			if !avail {
-				conn.Write([]byte{0})
+	go func() {
+		for s.running {
+			cx, err := s.server.Accept()
+			if err != nil {
+				fmt.Println(err)
 				continue
 			}
+
+			conn := NewCryptoConn(cx, s.secret)
+
+			hreq := make([]byte, 5)
+			_, err = conn.Read(hreq)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			if string(hreq) != "IPPLS" {
+				fmt.Println("Discarding connection due to wrong handshake request from: ", conn.RemoteAddr())
+				continue
+			}
+
+			var available bool
+
+			lastIP, available = s.nextIP(lastIP)
+			if !available {
+				xx := make(net.IP, 4)
+				copy(xx, s.gw.IP.To4())
+				var found bool
+				var avail bool = false
+				for {
+					xx, found = s.nextIP(xx)
+					if !found {
+						break
+					}
+					if !foundInMap(string(xx), mux.conn) {
+						lastIP = xx.To4()
+						avail = true
+						break
+					}
+				}
+				if !avail {
+					conn.Write([]byte{0})
+					continue
+				}
+			}
+
+			prefix, _ := s.gw.Mask.Size()
+			hsd := append([]byte(lastIP), byte(prefix))
+			hsd = append(hsd, []byte(s.gw.IP.To4())...)
+			_, err = conn.Write(hsd)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			p := make([]byte, 1)
+
+			_, err = conn.Read(p)
+
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			if p[0] != 1 {
+				lastIP[3]--
+				fmt.Println("client wasn't happy")
+				continue
+			}
+
+			fmt.Println("Negotiated addr : ", lastIP)
+
+			pr, pw := io.Pipe()
+
+			mux.conn[string(lastIP)] = pw
+
+			ex := &Exchanger{conn: &NotifierConn{ReadWriteCloser: conn, ip: string(lastIP), comm: mux.sig, wg: wg}, iface: &ifaceClient{pr: pr, wr: s.iface, addr: p}}
+			wg.Add(1)
+			go ex.Start()
 		}
+	}()
 
-		prefix, _ := s.gw.Mask.Size()
-		hsd := append([]byte(lastIP), byte(prefix))
-		hsd = append(hsd, []byte(s.gw.IP.To4())...)
-		_, err = conn.Write(hsd)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		p := make([]byte, 1)
-
-		_, err = conn.Read(p)
-
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		if p[0] != 1 {
-			lastIP[3]--
-			fmt.Println("client wasn't happy")
-			continue
-		}
-
-		fmt.Println("Negotiated addr : ", lastIP)
-
-		pr, pw := io.Pipe()
-
-		mux.conn[string(lastIP)] = pw
-
-		ex := &Exchanger{conn: &NotifierConn{ReadWriteCloser: conn, ip: string(lastIP), comm: mux.sig, wg: wg}, iface: &ifaceClient{pr: pr, wr: s.iface, addr: p}}
-		//ex := &Exchanger{conn: conn, iface: s.iface}
-		wg.Add(1)
-		go ex.Start()
-	}
-
+	<-s.close
 	fmt.Println("Closing existing connections...")
-	mux.Close()
-
+	//mux.Close()
+	fmt.Println("Closed all the muxes")
 	return nil
 }
 
 func (s *Server) Close() {
 	s.running = false
+	s.close <- true
 }
 
 type ifaceClient struct {
@@ -201,7 +209,6 @@ func (m *ifaceMux) Mux() {
 		dst := p[16:20]
 		cl, ok := m.conn[string(dst)]
 		if !ok {
-			fmt.Println("Connection Not found...")
 			continue
 		}
 
@@ -223,9 +230,6 @@ func (m *ifaceMux) cleanup() {
 func (i *ifaceMux) Close() {
 	for _, val := range i.conn {
 		val.Close()
-	}
-
-	for len(i.conn) != 0 {
 	}
 
 	close(i.sig)
