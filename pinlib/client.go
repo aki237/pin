@@ -1,20 +1,20 @@
 package pinlib
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"net"
 	"sync"
 )
 
 // Client struct contains all fields for exchanging packets to the server through a TCP connection
 type Client struct {
 	// Unexported
-	iface io.ReadWriter // handler for the tunneling interface
-	pub   string
-	key   string
+	iface  io.ReadWriter // handler for the tunneling interface
+	secret [40]byte
+	conn   *CounterConn
+
 	// Exported
 	Remote string                    // Remote is the IP:PORT combination of the remote pin
 	Hook   func(ip, gw string) error // Hook is a function that runs immediately after the TCP connection is made
@@ -22,10 +22,10 @@ type Client struct {
 }
 
 // NewClient is used to create a new client which makes a connection to the remote pin.
-func NewClient(remote string, iface io.ReadWriter, pem, priv string) *Client {
+func NewClient(remote string, iface io.ReadWriter, secret [40]byte) *Client {
 	// if number of connections is 0 it is pointless to run this VPN
 
-	return &Client{iface: iface, Remote: remote, pub: pem, key: priv, Hook: func(ip, gw string) error { return nil }, close: make(chan bool)}
+	return &Client{iface: iface, Remote: remote, secret: secret, Hook: func(ip, gw string) error { return nil }, close: make(chan bool)}
 }
 
 // Start method makes TCP connections and starts the packet exchange from the local tunneling interface to the remote interface.
@@ -34,19 +34,19 @@ func (c *Client) Start() error {
 	// wait group to wait for all go routines to complete
 	wg := &sync.WaitGroup{}
 
-	ipp := make([]byte, 9)
-
-	cert, err := tls.LoadX509KeyPair(c.pub, c.key)
-	if err != nil {
-		log.Fatalf("client: loadkeys: %s", err)
-	}
-	config := tls.Config{Certificates: []tls.Certificate{cert}}
-	config.InsecureSkipVerify = true
-
-	conn, err := tls.Dial("tcp", c.Remote, &config)
+	cx, err := net.Dial("tcp", c.Remote)
 	if err != nil {
 		return err
 	}
+
+	conn := NewCryptoConn(cx, c.secret)
+
+	_, err = conn.Write([]byte("IPPLS"))
+	if err != nil {
+		return errors.New("Error while handshake: " + err.Error())
+	}
+
+	ipp := make([]byte, 9)
 
 	n, err := conn.Read(ipp)
 	if err != nil {
@@ -67,6 +67,8 @@ func (c *Client) Start() error {
 
 	cc := &CounterConn{conn: conn}
 
+	c.conn = cc
+
 	ex := &Exchanger{conn: cc, iface: c.iface}
 
 	go func() {
@@ -74,7 +76,6 @@ func (c *Client) Start() error {
 		}
 		ex.running = false
 		conn.Close()
-		wg.Done()
 	}()
 
 	// this is where the hook function is run.
@@ -86,8 +87,10 @@ func (c *Client) Start() error {
 	}
 
 	wg.Add(1)
-	go ex.Start()
-
+	go func() {
+		ex.Start()
+		wg.Done()
+	}()
 	wg.Wait()
 
 	conn.Close()
@@ -97,6 +100,14 @@ func (c *Client) Start() error {
 
 func (c *Client) Close() {
 	c.close <- true
+}
+
+type TxnStat struct {
+	In, Out uint64
+}
+
+func (c *Client) GetTxnStat() *TxnStat {
+	return &TxnStat{In: c.conn.BytesIn, Out: c.conn.BytesOut}
 }
 
 type CounterConn struct {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-
-	"github.com/golang/snappy"
 )
 
 // Exchanger is the main struct used to enable IP packet transfer between 2 peers
@@ -30,7 +28,7 @@ func (p *Exchanger) incoming() {
 	packet := make([]byte, MTU)
 
 	// pinlib exchanger uses snappy compression which gave good results in transfer speeds.
-	rd := snappy.NewReader(p.conn)
+	rd := p.conn
 
 	for p.running {
 		n, err := rd.Read(packet)
@@ -62,7 +60,7 @@ func (p *Exchanger) outgoing() {
 	packet := make([]byte, MTU)
 
 	// snappy compressor interface
-	wr := snappy.NewWriter(p.conn)
+	wr := p.conn
 
 	for p.running {
 		n, err := p.iface.Read(packet)
@@ -75,8 +73,11 @@ func (p *Exchanger) outgoing() {
 		// In openbsd, there is a additional tunnel header to specify the protocol
 		// This had to be discarded before sending it to the remote.
 		if runtime.GOOS == "openbsd" {
-			packet = packet[4:]
-			n = n - 4
+			if len(packet) < 4 {
+				packet = packet[4:]
+				n = n - 4
+				continue
+			}
 		}
 
 		_, err = wr.Write(packet[:n])

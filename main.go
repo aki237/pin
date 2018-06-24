@@ -3,37 +3,51 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"./pinlib"
 )
 
+var (
+	version = "0.0.1"
+)
+
 func main() {
-	// server only options
-	mode := flag.Bool("s", false, "switch on server mode instead of client")
-	dhcp := flag.String("dhcp", "", "(server mode) info for dhcp server")
-
-	// common options
-	ifaceName := flag.String("i", "pin0", "name of the tunneling network interface")
-	mtu := flag.Int("mtu", 1500, "specify MTU of the tunneling Device")
-	pub := flag.String("pub", "enc.pem", "Pubic key")
-	key := flag.String("priv", "enc.key", "Private key")
-	addr := flag.String("addr", "", "IP address of the tunneling network interface")
-
-	// client options
+	configFile := flag.String("c", "", "config file to parse")
+	versionPrint := flag.Bool("v", false, "print the version info")
 
 	flag.Parse()
 
-	pinlib.MTU = *mtu
-
-	if *dhcp == "" && *mode {
-		fmt.Println("Error::Commandline::Parse : no IP address for the tunnel interface is provided")
+	if *versionPrint {
+		fmt.Println("pin version v" + version)
 		return
 	}
 
-	if !*mode && *addr == "" {
-		fmt.Println("Error::Commandline::Parse : no remote server specified")
+	if *configFile == "" {
+		flag.Usage()
 		return
 	}
 
-	RunPin(*mode, *addr, *ifaceName, *dhcp, *pub, *key)
+	config, err := NewConfigFromFile(*configFile)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGTSTP)
+
+	pinlib.MTU = config.MTU
+	switch config.Mode {
+	case SERVER:
+		RunPin(true, config.Address, config.InterfaceName, config.DHCP, config.Secret, nil, c)
+	case CLIENT:
+		RunPin(false, config.Address, config.InterfaceName, config.DHCP, config.Secret, nil, c)
+	case DAEMON:
+		NewDaemon().RunSocket(config.PidFile)
+	default:
+		fmt.Println("How did you even make it till here?? `:|")
+	}
 }
