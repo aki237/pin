@@ -32,8 +32,8 @@ Mode : client
 Address : addre.ss:9067
 #
 # For the serious folks, you can set the MTU for optimised speed or CPU usage
-# If this is to changed, pls change it for the tunneling interface too.
-# If you have no idea what this does, just leave it as 1500 or don't specify this.
+# If this is to be changed, pls change it for the tunneling interface too.
+# If you have no idea what this does, just leave it as 1500 or just don't specify this.
 MTU : 1500
 #
 # What should be the name of the interface. This only works in Linux.
@@ -73,6 +73,11 @@ This is a hobby project. I'm neither a security expert or a network expert.
  * Google and SO said me salsa20 is good enough for daily use and easy on CPU.
  * Found snappy to be really fast in my experience 
    + Comparing with lzo, zlib, zstd, gzip etc.,
-   + But... Man!! that drinks CPU for heavy loads...
+   + But... Man!! that chokes CPU for heavy loads...
 
-This works for me in my university. Feel fork it, modify it, use it and contribute too...
+This works for me in my university. Feel free to fork it, modify it, use it and contribute too...
+
+# Contributors
+ + [aki237](https://gitlab.com/aki237)
+ + [sbioa1234](https://gitlab.com/sbioa1234)
+
