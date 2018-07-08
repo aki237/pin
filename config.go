@@ -12,7 +12,6 @@ type RunMode int
 const (
 	SERVER RunMode = iota
 	CLIENT
-	DAEMON
 )
 
 type Config struct {
@@ -22,7 +21,6 @@ type Config struct {
 	InterfaceName string
 	DHCP          string
 	Secret        string
-	PidFile       string
 }
 
 func NewConfigFromFile(filename string) (*Config, error) {
@@ -51,19 +49,12 @@ func NewConfigFromFile(filename string) (*Config, error) {
 		val := strings.TrimSpace(vals[1])
 
 		switch key {
-		case "PidFile":
-			config.PidFile = val
 		case "Mode":
 			switch val {
 			case "client":
 				config.Mode = CLIENT
 			case "server":
 				config.Mode = SERVER
-			case "daemon":
-				config.Mode = DAEMON
-			case "demon":
-				fmt.Println(">:)")
-				config.Mode = DAEMON
 			default:
 				return nil, fmt.Errorf("Config parse error : unknown keyword in line %d for %s. Expected %s or %s", i, key, "client", "server")
 			}
@@ -86,12 +77,8 @@ func NewConfigFromFile(filename string) (*Config, error) {
 		}
 
 	}
-	if config.Address == "" && config.Mode != DAEMON {
+	if config.Address == "" {
 		return nil, fmt.Errorf("Config parse error : no address specified")
-	}
-
-	if config.PidFile == "" {
-		config.PidFile = "/tmp/pin.pid"
 	}
 
 	if config.MTU <= 0 {
