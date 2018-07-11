@@ -4,7 +4,7 @@ pin a simple tunnel client and server which is configured to act as a VPN by def
 It is tested and knows to work in Linux (obviously), FreeBSD , DragonflyBSD, NetBSD and OpenBSD*
 
 It used to work on windows with the TUN/TAP driver. But again the routing system and the inconsistencies of windows
-seriously pissed me off, so killed it's support. (Sorry [sbioa1234](https://gitlab.com/sbioa1234), for all the crap you went through)
+seriously pissed me off, so killed it's support.
 
 * *OpenBSD : might have to check again*
 
@@ -24,7 +24,7 @@ The configuration syntax is simple (as usual :P):
 # Comments are awesome...
 # Commented line begins with a hash
 #
-# What mode to run as : client server daemon demon
+# What mode to run as : client server
 Mode : client
 #
 # For clients, Address is the info of the remote server. Example : 12.13.14.15:9090
@@ -57,6 +57,9 @@ DHCP : 10.10.0.1/24
 The program uses, salsa20 as the encryption algorithm. Which requires a 32 byte key and a 8 byte nonce
 So the secret is of 40 bytes in length. (For the folks who don't do math, 32 + 8 is still 40 :P).
 
+At the moment the nonce is static and shared among the clients. Yet to add a random nonce generation during runtime
+unique for every client (connection).
+
 So let's generate a key.
 (If you didn't notice, that key specified is a base64 encoded string.)
 
@@ -76,6 +79,10 @@ This is a hobby project. I'm neither a security expert or a network expert.
    + But... Man!! that chokes CPU for heavy loads...
 
 This works for me in my university. Feel free to fork it, modify it, use it and contribute too...
+
+# Roadmap
+ + Unique nonce generation for every client (connection)
+ + Add a message authentication layer for integrity
 
 # Contributors
  + [aki237](https://gitlab.com/aki237)
