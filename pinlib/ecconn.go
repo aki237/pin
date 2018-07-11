@@ -4,6 +4,7 @@ import (
 	"crypto/cipher"
 	"io"
 	"net"
+	"time"
 
 	"github.com/golang/snappy"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -49,10 +50,10 @@ type CryptoConn struct {
 }
 
 // NewCryptoConn creates a new CryptoConn struct
-func NewCryptoConn(conn net.Conn, secret [32]byte, initSeed int64) *CryptoConn {
+func NewCryptoConn(conn net.Conn, secret [32]byte) *CryptoConn {
 	c := &CryptoConn{Conn: NewCompressorConn(conn)}
 	copy(c.key[:], secret[:32])
-	c.nonceGen = NewRng(initSeed)
+	c.nonceGen = NewRng(time.Now().Unix())
 	c.crypter, _ = chacha20poly1305.New(c.key[:])
 	return c
 }

@@ -39,13 +39,7 @@ func (c *Client) Start() error {
 		return err
 	}
 
-	seedByte := make([]byte, 1)
-	_, err = cx.Read(seedByte)
-	if err != nil {
-		return errors.New("Error while seeding nonce generator: " + err.Error())
-	}
-
-	conn := NewCryptoConn(cx, c.secret, int64(seedByte[0]))
+	conn := NewCryptoConn(cx, c.secret)
 
 	_, err = conn.Write([]byte("IPPLS"))
 	if err != nil {

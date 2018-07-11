@@ -3,7 +3,6 @@ package pinlib
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"sync"
 )
@@ -93,10 +92,7 @@ func (s *Server) Start() error {
 				continue
 			}
 
-			seed := rand.Intn(255)
-			cx.Write([]byte{byte(seed)})
-
-			conn := NewCryptoConn(cx, s.secret, int64(seed))
+			conn := NewCryptoConn(cx, s.secret)
 
 			hreq := make([]byte, 5)
 			_, err = conn.Read(hreq)
