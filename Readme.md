@@ -1,10 +1,10 @@
 # pin
 
 pin a simple tunnel client and server which is configured to act as a VPN by default.
-It is tested and knows to work in Linux (obviously), FreeBSD , DragonflyBSD, NetBSD and OpenBSD*
+It is tested and known to work in Linux (obviously), FreeBSD , DragonflyBSD, NetBSD and OpenBSD*
 
 It used to work on windows with the TUN/TAP driver. But again the routing system and the inconsistencies of windows
-seriously pissed me off, so killed it's support.
+seriously pissed me off, so killed its support.
 
 * *OpenBSD : might have to check again*
 
