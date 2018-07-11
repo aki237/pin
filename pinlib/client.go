@@ -12,7 +12,7 @@ import (
 type Client struct {
 	// Unexported
 	iface  io.ReadWriter // handler for the tunneling interface
-	secret [40]byte
+	secret [32]byte
 	conn   *CounterConn
 
 	// Exported
@@ -22,7 +22,7 @@ type Client struct {
 }
 
 // NewClient is used to create a new client which makes a connection to the remote pin.
-func NewClient(remote string, iface io.ReadWriter, secret [40]byte) *Client {
+func NewClient(remote string, iface io.ReadWriter, secret [32]byte) *Client {
 	// if number of connections is 0 it is pointless to run this VPN
 
 	return &Client{iface: iface, Remote: remote, secret: secret, Hook: func(ip, gw string) error { return nil }, close: make(chan bool)}
@@ -39,7 +39,13 @@ func (c *Client) Start() error {
 		return err
 	}
 
-	conn := NewCryptoConn(cx, c.secret)
+	seedByte := make([]byte, 1)
+	_, err = cx.Read(seedByte)
+	if err != nil {
+		return errors.New("Error while seeding nonce generator: " + err.Error())
+	}
+
+	conn := NewCryptoConn(cx, c.secret, int64(seedByte[0]))
 
 	_, err = conn.Write([]byte("IPPLS"))
 	if err != nil {

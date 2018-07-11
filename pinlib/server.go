@@ -3,6 +3,7 @@ package pinlib
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"sync"
 )
@@ -13,12 +14,12 @@ type Server struct {
 	server  net.Listener
 	iface   io.ReadWriter
 	running bool
-	secret  [40]byte
+	secret  [32]byte
 	close   chan bool
 }
 
 // NewServer method is used to create a new server struct with a given listening address
-func NewServer(addr string, iface io.ReadWriter, gw *net.IPNet, secret [40]byte) (*Server, error) {
+func NewServer(addr string, iface io.ReadWriter, gw *net.IPNet, secret [32]byte) (*Server, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -92,7 +93,10 @@ func (s *Server) Start() error {
 				continue
 			}
 
-			conn := NewCryptoConn(cx, s.secret)
+			seed := rand.Intn(255)
+			cx.Write([]byte{byte(seed)})
+
+			conn := NewCryptoConn(cx, s.secret, int64(seed))
 
 			hreq := make([]byte, 5)
 			_, err = conn.Read(hreq)
@@ -102,7 +106,7 @@ func (s *Server) Start() error {
 			}
 
 			if string(hreq) != "IPPLS" {
-				fmt.Println("Discarding connection due to wrong handshake request from: ", conn.RemoteAddr())
+				fmt.Println("Discarding connection due to wrong handshake request from: ", conn.RemoteAddr(), string(hreq))
 				continue
 			}
 

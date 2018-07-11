@@ -45,7 +45,7 @@ Interface : pin0
 #
 # Ok Let's get serious. This is a secret key. Shared by both server and 
 # the client (Symmetric). How to generate this secret??? That will be stated down below.
-Secret : LBAcvTvDX/d2jpeETDPqjncZXCqBPdXmPJruCRyviVwR8kIkE76bAg==
+Secret : u7ZQZWomGPHG0GKqoe8E7Vg+hgIxiYnn7Yr4HBz4VWs=
 #
 # For the server folks... You know what this is. DHCP.. No not an actual DHCP running inside.
 # But for provision and Connection Identification.
@@ -54,18 +54,14 @@ DHCP : 10.10.0.1/24
 
 # Secret Generation
 
-The program uses, salsa20 as the encryption algorithm. Which requires a 32 byte key and a 8 byte nonce
-So the secret is of 40 bytes in length. (For the folks who don't do math, 32 + 8 is still 40 :P).
-
-At the moment the nonce is static and shared among the clients. Yet to add a random nonce generation during runtime
-unique for every client (connection).
+The program uses, ChaCha20 as the encryption algorithm. Which requires a 32 byte key.
 
 So let's generate a key.
 (If you didn't notice, that key specified is a base64 encoded string.)
 
 ```shell
-$ dd status=none if=/dev/urandom of=/dev/stdout bs=1 count=40 | base64
-H3kkhJCF8e3oHSlascRHPsxEFPu9S6GOtgv/p55s7L3kI5O7Sy/84Q==
+$ dd status=none if=/dev/urandom of=/dev/stdout bs=1 count=32 | base64
+u7ZQZWomGPHG0GKqoe8E7Vg+hgIxiYnn7Yr4HBz4VWs=
 ```
 
 This key is to be shared by both the server and the client.
@@ -74,6 +70,7 @@ This key is to be shared by both the server and the client.
 
 This is a hobby project. I'm neither a security expert or a network expert.
  * Google and SO said me salsa20 is good enough for daily use and easy on CPU.
+ * Had to add a MAC for the data sent. So used ChaCha20 (salsa20 family) + Poly1305 combination.
  * Found snappy to be really fast in my experience 
    + Comparing with lzo, zlib, zstd, gzip etc.,
    + But... Man!! that chokes CPU for heavy loads...
@@ -81,8 +78,9 @@ This is a hobby project. I'm neither a security expert or a network expert.
 This works for me in my university. Feel free to fork it, modify it, use it and contribute too...
 
 # Roadmap
- + Unique nonce generation for every client (connection)
- + Add a message authentication layer for integrity
+ + ~~Unique nonce generation for every client (connection)~~
+ + ~~Add a message authentication layer for integrity~~
+ + Time based key variation.
 
 # Contributors
  + [aki237](https://gitlab.com/aki237)

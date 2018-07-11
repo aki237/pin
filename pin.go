@@ -10,14 +10,6 @@ import (
 	"./pinlib"
 )
 
-const (
-	ERRSUCCESS    = 0
-	ERRRUNNING    = 3
-	ERRWARG       = 4
-	ERRNOTRUNNING = 5
-	ERRNOTIMPL    = 6
-)
-
 func RunPin(server bool, addr, ifaceName, tunaddr, secret string, c chan os.Signal) {
 	iface := NewTUN(&ifaceName)
 	defer iface.Close()
@@ -31,12 +23,12 @@ func RunPin(server bool, addr, ifaceName, tunaddr, secret string, c chan os.Sign
 		return
 	}
 
-	if len(secretdec) != 40 {
+	if len(secretdec) != 32 {
 		fmt.Println("Error : key length mismatch, need 40 got", len(secretdec))
 		return
 	}
 
-	var kcn [40]byte
+	var kcn [32]byte
 	copy(kcn[:], secretdec)
 
 	if server {
