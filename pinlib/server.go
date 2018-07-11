@@ -54,7 +54,7 @@ func (s *Server) nextIP(lastIP net.IP) (net.IP, bool) {
 }
 
 func foundInMap(k string, dict map[string]io.WriteCloser) bool {
-	for key, _ := range dict {
+	for key := range dict {
 		if key == k {
 			return true
 		}

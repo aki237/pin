@@ -1,0 +1,30 @@
+image: golang:latest
+
+variables:
+  REPO_NAME: gitlab.com/aki237/pin
+
+before_script:
+  - cd $GOPATH/src/
+  - mkdir -p $GOPATH/src/golang.org/x/
+  - cd $GOPATH/src/golang.org/x/
+  - git clone https://github.com/golang/net/
+  - cd $CI_PROJECT_DIR
+  - go get -d -v ./...
+  
+
+stages:
+    - test
+    - build
+
+format:
+    stage: test
+    script:
+      - diff <(echo -n) <(gofmt -s -d .)
+
+compile:
+    stage: build
+    script:
+      - bash $CI_PROJECT_DIR/scripts/build.sh pin $CI_PROJECT_DIR
+    artifacts:
+      paths:
+        - artifacts/
