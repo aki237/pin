@@ -11,17 +11,28 @@ import (
 )
 
 var (
-	version = "0.0.2"
+	version   = "0.0.0"
+	buildDate = "HH:MM DD-MMM-YYYY"
 )
+
+func printVersionInfo() {
+	fmt.Println("pin v" + version + " " + buildDate)
+}
 
 func main() {
 	configFile := flag.String("c", "", "config file to parse")
 	versionPrint := flag.Bool("v", false, "print the version info")
 
+	flag.Usage = func() {
+		printVersionInfo()
+		flag.VisitAll(func(f *flag.Flag) {
+			fmt.Printf("\t-%s\t%s\n", f.Name, f.Usage+f.DefValue)
+		})
+	}
 	flag.Parse()
 
 	if *versionPrint {
-		fmt.Println("pin version v" + version)
+		printVersionInfo()
 		return
 	}
 
