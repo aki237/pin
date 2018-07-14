@@ -1,5 +1,7 @@
 # pin
 
+![Build Status](https://gitlab.com/aki237/pin/badges/master/build.svg)
+
 pin a simple tunnel client and server which is configured to act as a VPN by default.
 It is tested and known to work in Linux (obviously), FreeBSD , DragonflyBSD, NetBSD and OpenBSD*
 
