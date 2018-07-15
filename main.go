@@ -53,9 +53,9 @@ func main() {
 	pinlib.MTU = config.MTU
 	switch config.Mode {
 	case SERVER:
-		RunPin(true, config.Address, config.InterfaceName, config.DHCP, config.Secret, c)
+		RunPin(config, c)
 	case CLIENT:
-		RunPin(false, config.Address, config.InterfaceName, config.DHCP, config.Secret, c)
+		RunPin(config, c)
 	default:
 		fmt.Println("How did you even make it till here?? `:|")
 	}

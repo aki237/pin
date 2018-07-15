@@ -25,3 +25,13 @@ func findExecutablePath(exe string) (string, error) {
 	}
 	return "", errors.New("executable not found in PATH")
 }
+
+func removeEmptiesAndStrip(strs []string) []string {
+	x := make([]string, 0)
+	for i := range strs {
+		if strs[i] != "" {
+			x = append(x, strings.TrimSpace(strs[i]))
+		}
+	}
+	return x
+}

@@ -1,6 +1,6 @@
 # pin
 
-![Build Status](https://gitlab.com/aki237/pin/badges/master/build.svg)
+[![Build Status](https://gitlab.com/aki237/pin/badges/master/build.svg)](https://gitlab.com/aki237/pin/-/jobs)
 
 pin a simple tunnel client and server which is configured to act as a VPN by default.
 It is tested and known to work in Linux (obviously), FreeBSD , DragonflyBSD, NetBSD and OpenBSD*
@@ -52,6 +52,10 @@ Secret : u7ZQZWomGPHG0GKqoe8E7Vg+hgIxiYnn7Yr4HBz4VWs=
 # For the server folks... You know what this is. DHCP.. No not an actual DHCP running inside.
 # But for provision and Connection Identification.
 DHCP : 10.10.0.1/24
+#
+# For the client side, optionally DNS can be setup by using the DNS option
+# Multiple DNS server IPs can be specified by separating them with a comma like the following :
+DNS : 1.1.1.1, 8.8.8.8, 4.4.2.2
 ```
 
 # Secret Generation

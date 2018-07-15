@@ -181,57 +181,81 @@ func SetupIPTables(ifaceName string) error {
 	return err
 }
 
-func SetupClient(client *pinlib.Client, addr, ifaceName string) {
+func (s *Session) SetupClient() {
+	client, ok := s.peer.(*pinlib.Client)
+	if !ok {
+		return
+	}
 	client.Hook = func(ipp, gw string) error {
-		err := SkipRemoteRouting(addr)
+		taddr, err := net.ResolveTCPAddr("tcp", s.Address)
+		if err != nil {
+			return err
+		}
+		s.ResolvedRemote = taddr.IP.To4()
+
+		s.DefaultGateway, err = getDefaultGateway(s.Address)
 		if err != nil {
 			return err
 		}
 
-		err = SetupLink(ifaceName)
+		err = SkipRemoteRouting(s.Address)
 		if err != nil {
 			return err
 		}
 
-		err = SetupAddr(ifaceName, ipp, gw)
+		err = SetupLink(s.InterfaceName)
 		if err != nil {
 			return err
 		}
 
-		return SetupRoutes(gw)
+		_, s.InterfaceAddress, err = net.ParseCIDR(ipp)
+		if err != nil {
+			return err
+		}
+
+		s.InterfaceGateway = gw
+
+		err = SetupAddr(s.InterfaceName, ipp, gw)
+		if err != nil {
+			return err
+		}
+
+		err = SetupRoutes(gw)
+		if err != nil {
+			return err
+		}
+
+		return s.SetupDNS()
 	}
 }
 
-func SetupServer(server *pinlib.Server, ifaceName, tunaddr string) error {
-	err := SetupLink(ifaceName)
+func (s *Session) SetupServer() error {
+	err := SetupLink(s.InterfaceName)
 	if err != nil {
 		return err
 	}
 
-	err = SetupAddr(ifaceName, tunaddr, "")
+	err = SetupAddr(s.InterfaceName, s.DHCP, "")
 	if err != nil {
 		return err
 	}
 
-	return SetupIPTables(ifaceName)
+	return SetupIPTables(s.InterfaceName)
 }
 
-func StopClient(addr string) {
-	gw, err := getDefaultGateway(addr)
-	if err != nil {
-		return
-	}
-
-	ta, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		return
-	}
-
-	err = netlink.RouteDel(&netlink.Route{
+func (s *Session) StopClient() {
+	netlink.RouteDel(&netlink.Route{
 		Dst: &net.IPNet{
-			IP:   ta.IP,
+			IP:   s.ResolvedRemote,
 			Mask: net.IPv4Mask(255, 255, 255, 255),
 		},
-		Gw: gw,
+		Gw: s.DefaultGateway,
 	})
+	err := s.RevertDNS()
+	if err != nil {
+		fmt.Println(" * Unable to revert the DNS settings : ", err)
+		fmt.Println(" * Add the following to the /etc/resolv.conf file (till the line with the '# %%') *")
+		fmt.Println(s.ocresolv)
+		fmt.Println("# %%")
+	}
 }

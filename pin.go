@@ -10,14 +10,16 @@ import (
 	"./pinlib"
 )
 
-func RunPin(server bool, addr, ifaceName, tunaddr, secret string, c chan os.Signal) {
-	iface := NewTUN(&ifaceName)
+func RunPin(config *Config, c chan os.Signal) {
+	server := config.Mode == SERVER
+	var err error
+	var session Session
+	session.Config = config
+	iface := NewTUN(&session.InterfaceName)
+
 	defer iface.Close()
 
-	var handler pinlib.Peer
-	var err error
-
-	secretdec, err := base64.StdEncoding.DecodeString(secret)
+	secretdec, err := base64.StdEncoding.DecodeString(session.Secret)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -34,26 +36,26 @@ func RunPin(server bool, addr, ifaceName, tunaddr, secret string, c chan os.Sign
 	if server {
 		var ipNet *net.IPNet
 		var ip net.IP
-		ip, ipNet, err = net.ParseCIDR(tunaddr)
+		ip, ipNet, err = net.ParseCIDR(session.DHCP)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		ipNet.IP = ip
-		handler, err = pinlib.NewServer(addr, iface, ipNet, kcn)
+		session.peer, err = pinlib.NewServer(session.Address, iface, ipNet, kcn)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		err = SetupServer(handler.(*pinlib.Server), ifaceName, tunaddr)
+		err = session.SetupServer()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 	} else {
-		handler = pinlib.NewClient(addr, iface, kcn)
+		session.peer = pinlib.NewClient(session.Address, iface, kcn)
 
-		SetupClient(handler.(*pinlib.Client), addr, ifaceName)
+		session.SetupClient()
 	}
 
 	go func() {
@@ -64,11 +66,11 @@ func RunPin(server bool, addr, ifaceName, tunaddr, secret string, c chan os.Sign
 		case syscall.SIGTSTP:
 			fmt.Println("\nReceived Ctrl-Z. Suspend not supported.")
 		}
-		handler.Close()
+		session.peer.Close()
 		fmt.Println("Exchanger Closed...")
 	}()
 
-	err = handler.Start()
+	err = session.peer.Start()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -76,6 +78,8 @@ func RunPin(server bool, addr, ifaceName, tunaddr, secret string, c chan os.Sign
 	iface.Close()
 
 	if !server {
-		StopClient(addr)
+		fmt.Println("Stopping client.")
+		session.StopClient()
+		fmt.Println("Stopped client.")
 	}
 }

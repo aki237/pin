@@ -94,36 +94,57 @@ func SetupRoutes(gw string) error {
 	return routeB.Run()
 }
 
-func SetupClient(client *pinlib.Client, addr, ifaceName string) {
+func (s *Session) SetupClient() {
+	client, ok := s.peer.(*pinlib.Client)
+	if !ok {
+		return
+	}
 	client.Hook = func(ipp, gw string) error {
-		err := SkipRemoteRouting(addr)
-		if err != nil {
-			fmt.Printf("Error while adding the blacklist route (ie., %s through the default gw): %s\n", addr, err)
-		}
-		err = SetupAddr(ifaceName, ipp, gw)
+		taddr, err := net.ResolveTCPAddr("tcp", s.Address)
 		if err != nil {
 			return err
 		}
-		return SetupRoutes(gw)
+		s.ResolvedRemote = taddr.IP.To4()
+
+		s.DefaultGateway, err = getDefaultGateway(s.Address)
+		if err != nil {
+			return err
+		}
+		err = SkipRemoteRouting(s.Address)
+		if err != nil {
+			fmt.Printf("Error while adding the blacklist route (ie., %s through the default gw): %s\n", s.Address, err)
+		}
+
+		_, s.InterfaceAddress, err = net.ParseCIDR(ipp)
+		if err != nil {
+			return err
+		}
+
+		s.InterfaceGateway = gw
+
+		err = SetupAddr(s.InterfaceName, s.InterfaceAddress.String(), s.InterfaceGateway)
+		if err != nil {
+			return err
+		}
+
+		err = SetupRoutes(gw)
+		if err != nil {
+			return err
+		}
+
+		return s.SetupDNS()
 	}
 
 }
 
-func SetupServer(server *pinlib.Server, ifaceName, tunaddr string) error {
+func (s *Session) SetupServer() error {
 	fmt.Println("Not Implemented")
 	return nil
 }
 
-func StopClient(addr string) {
-	ta, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+func (s *Session) StopClient() {
 
-	ta.IP = ta.IP.To4()
-
-	serverIP := fmt.Sprintf("%d.%d.%d.%d", ta.IP[0], ta.IP[1], ta.IP[2], ta.IP[3])
+	serverIP := fmt.Sprintf("%d.%d.%d.%d", s.ResolvedRemote[0], s.ResolvedRemote[1], s.ResolvedRemote[2], s.ResolvedRemote[3])
 	cmd := exec.Command("route", "delete", serverIP)
 	err = cmd.Run()
 	if err != nil {
@@ -140,6 +161,14 @@ func StopClient(addr string) {
 		}
 
 		fmt.Println("Interface deleted:", tunname)
+	}
+
+	err := s.RevertDNS()
+	if err != nil {
+		fmt.Println(" * Unable to revert the DNS settings : ", err)
+		fmt.Println(" * Add the following to the /etc/resolv.conf file (till the line with the '# %%') *")
+		fmt.Println(s.ocresolv)
+		fmt.Println("# %%")
 	}
 
 	return
