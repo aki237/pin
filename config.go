@@ -23,6 +23,7 @@ type Config struct {
 	MTU           int
 	InterfaceName string
 	DHCP          string
+	DNS           []string
 	Secret        string
 }
 
@@ -90,6 +91,8 @@ func (config *Config) setValueForKey(i int, key, val string) error {
 		config.DHCP = val
 	case "Secret":
 		config.Secret = val
+	case "DNS":
+		config.DNS = removeEmptiesAndStrip(strings.Split(val, ","))
 	default:
 		return fmt.Errorf("Config parse error : garbage values ignored, '%s'", key)
 	}
