@@ -115,10 +115,14 @@ func (s *Session) SetupClient() {
 			fmt.Printf("Error while adding the blacklist route (ie., %s through the default gw): %s\n", s.Address, err)
 		}
 
-		_, s.InterfaceAddress, err = net.ParseCIDR(ipp)
+		var ip net.IP
+
+		ip, s.InterfaceAddress, err = net.ParseCIDR(ipp)
 		if err != nil {
 			return err
 		}
+
+		s.InterfaceAddress.IP = ip.To4()
 
 		s.InterfaceGateway = gw
 

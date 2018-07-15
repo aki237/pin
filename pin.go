@@ -11,51 +11,10 @@ import (
 )
 
 func RunPin(config *Config, c chan os.Signal) {
-	server := config.Mode == SERVER
-	var err error
-	var session Session
-	session.Config = config
-	iface := NewTUN(&session.InterfaceName)
 
-	defer iface.Close()
-
-	secretdec, err := base64.StdEncoding.DecodeString(session.Secret)
+	session, err := GetSessionForConfig(config)
 	if err != nil {
 		fmt.Println(err)
-		return
-	}
-
-	if len(secretdec) != 32 {
-		fmt.Println("Error : key length mismatch, need 40 got", len(secretdec))
-		return
-	}
-
-	var kcn [32]byte
-	copy(kcn[:], secretdec)
-
-	if server {
-		var ipNet *net.IPNet
-		var ip net.IP
-		ip, ipNet, err = net.ParseCIDR(session.DHCP)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		ipNet.IP = ip
-		session.peer, err = pinlib.NewServer(session.Address, iface, ipNet, kcn)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		err = session.SetupServer()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	} else {
-		session.peer = pinlib.NewClient(session.Address, iface, kcn)
-
-		session.SetupClient()
 	}
 
 	go func() {
@@ -75,11 +34,52 @@ func RunPin(config *Config, c chan os.Signal) {
 		fmt.Println(err)
 	}
 
-	iface.Close()
-
-	if !server {
+	if session.Mode != SERVER {
 		fmt.Println("Stopping client.")
 		session.StopClient()
 		fmt.Println("Stopped client.")
 	}
+}
+
+func GetSessionForConfig(config *Config) (*Session, error) {
+	server := config.Mode == SERVER
+	var err error
+	var session *Session = &Session{}
+	session.Config = config
+	iface := NewTUN(&session.InterfaceName)
+
+	secretdec, err := base64.StdEncoding.DecodeString(session.Secret)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(secretdec) != 32 {
+		return nil, fmt.Errorf("Error : key length mismatch, need 40 got %d", len(secretdec))
+	}
+
+	var kcn [32]byte
+	copy(kcn[:], secretdec)
+
+	if server {
+		var ipNet *net.IPNet
+		var ip net.IP
+		ip, ipNet, err = net.ParseCIDR(session.DHCP)
+		if err != nil {
+			return nil, err
+		}
+		ipNet.IP = ip
+		session.peer, err = pinlib.NewServer(session.Address, iface, ipNet, kcn)
+		if err != nil {
+			return nil, err
+		}
+		err = session.SetupServer()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		session.peer = pinlib.NewClient(session.Address, iface, kcn)
+
+		session.SetupClient()
+	}
+	return session, nil
 }
