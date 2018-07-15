@@ -106,7 +106,7 @@ func (s *Session) SetupClient() {
 		}
 		s.ResolvedRemote = taddr.IP.To4()
 
-		s.DefaultGateway, err = getDefaultGateway(s.Address)
+		s.DefaultGateway, err = getDefaultGatewayIP()
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func (s *Session) StopClient() {
 
 	serverIP := fmt.Sprintf("%d.%d.%d.%d", s.ResolvedRemote[0], s.ResolvedRemote[1], s.ResolvedRemote[2], s.ResolvedRemote[3])
 	cmd := exec.Command("route", "delete", serverIP)
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		fmt.Println("Route for remote server cannot be removed: ", err)
 		return
@@ -163,7 +163,7 @@ func (s *Session) StopClient() {
 		fmt.Println("Interface deleted:", tunname)
 	}
 
-	err := s.RevertDNS()
+	err = s.RevertDNS()
 	if err != nil {
 		fmt.Println(" * Unable to revert the DNS settings : ", err)
 		fmt.Println(" * Add the following to the /etc/resolv.conf file (till the line with the '# %%') *")
