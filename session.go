@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 
-	"./pinlib"
+	"pinlib"
 )
 
 // Session struct is used to hold the session values like the local tunneling address

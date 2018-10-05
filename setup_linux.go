@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"./pinlib"
+	"pinlib"
 	"github.com/vishvananda/netlink"
 )
 

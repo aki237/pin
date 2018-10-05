@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"./pinlib"
+	"pinlib"
 	"golang.org/x/net/route"
 )
 
