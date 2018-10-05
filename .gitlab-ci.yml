@@ -9,7 +9,8 @@ before_script:
   - cd $GOPATH/src/golang.org/x/
   - git clone https://github.com/golang/net/
   - cd $CI_PROJECT_DIR
-  - go get -d -v ./...
+  - go get -d -v ./
+  - go get -d -v ./vendor/pinlib
   
 
 stages:
