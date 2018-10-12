@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"pinlib"
+
 	"github.com/vishvananda/netlink"
 )
 
