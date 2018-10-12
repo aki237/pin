@@ -163,8 +163,9 @@ func SetupIPTables(ifaceName string) error {
 	}
 
 	cmds := [][]string{
-		{"-F"},                                                                          // Flush any old rules
-		{"-F", "-t", "nat"},                                                             // Flush the same for the NAT table
+		{"-F"},              // Flush any old rules
+		{"-F", "-t", "nat"}, // Flush the same for the NAT table
+
 		{"-I", "FORWARD", "-i", ifaceName, "-j", "ACCEPT"},                              // Accept all input packets from "interface" in the FORWARD chain
 		{"-I", "FORWARD", "-o", ifaceName, "-j", "ACCEPT"},                              // Accept all output packets from "interface" in the FORWARD chain
 		{"-I", "INPUT", "-i", ifaceName, "-j", "ACCEPT"},                                // Accept all output packets from "interface" in the INPUT chain
