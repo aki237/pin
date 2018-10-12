@@ -6,6 +6,8 @@ before_script:
   - cd $GOPATH/src/golang.org/x/
   - git clone https://github.com/golang/net/
   - cd $CI_PROJECT_DIR
+  - pwd
+  - ls -la
   - go get -d -v ./
 
 stages:
