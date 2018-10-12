@@ -6,6 +6,7 @@ before_script:
   - cd $GOPATH/src/golang.org/x/
   - git clone https://github.com/golang/net/
   - go get -v gitlab.com/$CI_PROJECT_PATH
+  - cd $GOPATH/src/gitlab.com/$CI_PROJECT_PATH
 
 stages:
     - test
