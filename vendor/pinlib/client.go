@@ -98,10 +98,6 @@ func (c *Client) Start() error {
 	return nil
 }
 
-func (c *Client) SetIface(wr io.ReadWriter) {
-	c.iface = wr
-}
-
 func (c *Client) Close() {
 	c.close <- true
 }
