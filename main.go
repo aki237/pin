@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"pinlib"
+	"gitlab.com/aki237/pin/pinlib"
 )
 
 var (

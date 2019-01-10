@@ -7,7 +7,7 @@ import (
 	"os"
 	"syscall"
 
-	"pinlib"
+	"gitlab.com/aki237/pin/pinlib"
 )
 
 func RunPin(config *Config, c chan os.Signal) {
