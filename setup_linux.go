@@ -5,6 +5,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -173,7 +174,7 @@ func SetupIPTables(ifaceName string) error {
 	}
 
 	for _, cx := range cmds {
-		fmt.Println("running command : ", strings.Join(append([]string{cmd}, cx...), " "))
+		log.Println("running command : ", strings.Join(append([]string{cmd}, cx...), " "))
 		err := exec.Command(cmd, cx...).Start()
 		if err != nil {
 			return err
@@ -259,9 +260,9 @@ func (s *Session) StopClient() {
 	})
 	err := s.RevertDNS()
 	if err != nil {
-		fmt.Println(" * Unable to revert the DNS settings : ", err)
+		fmt.Println("\n * Unable to revert the DNS settings : ", err)
 		fmt.Println(" * Add the following to the /etc/resolv.conf file (till the line with the '# %%') *")
 		fmt.Println(s.ocresolv)
-		fmt.Println("# %%")
+		fmt.Println("# %%\n")
 	}
 }

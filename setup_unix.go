@@ -5,6 +5,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os/exec"
 	"runtime"
@@ -153,19 +154,19 @@ func (s *Session) StopClient() {
 	cmd := exec.Command("route", "delete", serverIP)
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Route for remote server cannot be removed: ", err)
+		log.Println("Route for remote server cannot be removed: ", err)
 		return
 	}
 
-	if runtime.GOOS != "dragonfly" {
+	if runtime.GOOS != "dragonfly" && runtime.GOOS != "darwin" {
 		cmd := exec.Command("ifconfig", tunname, "destroy")
 		err = cmd.Run()
 		if err != nil {
-			fmt.Println("Tunnel interface cannot be removed: ", err)
+			log.Println("Tunnel interface cannot be removed: ", err)
 			return
 		}
 
-		fmt.Println("Interface deleted:", tunname)
+		log.Println("Interface deleted:", tunname)
 	}
 
 	err = s.RevertDNS()

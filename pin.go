@@ -20,13 +20,11 @@ func RunPin(config *Config, c chan os.Signal) {
 	go func() {
 		recdsig := <-c
 		switch recdsig {
-		case syscall.SIGTERM, os.Interrupt:
-			fmt.Println("\nReceived Ctrl-C")
 		case syscall.SIGTSTP:
-			fmt.Println("\nReceived Ctrl-Z. Suspend not supported.")
+			return
 		}
 		session.peer.Close()
-		fmt.Println("Exchanger Closed...")
+		fmt.Print("\r")
 	}()
 
 	err = session.peer.Start()
@@ -35,9 +33,7 @@ func RunPin(config *Config, c chan os.Signal) {
 	}
 
 	if session.Mode != SERVER {
-		fmt.Println("Stopping client.")
 		session.StopClient()
-		fmt.Println("Stopped client.")
 	}
 }
 

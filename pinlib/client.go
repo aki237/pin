@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 )
@@ -34,13 +35,17 @@ func (c *Client) Start() error {
 	// wait group to wait for all go routines to complete
 	wg := &sync.WaitGroup{}
 
+	defer log.Printf("Closing Connection to %s\n", c.Remote)
+
+	log.Printf("Dialing %s\n", c.Remote)
 	cx, err := net.Dial("tcp", c.Remote)
 	if err != nil {
 		return err
 	}
-
+	log.Printf("Dial Successful\n")
 	conn := NewCryptoConn(cx, c.secret)
 
+	log.Printf("Starting IP Handshake\n")
 	_, err = conn.Write([]byte("IPPLS"))
 	if err != nil {
 		return errors.New("Error while handshake: " + err.Error())
@@ -50,20 +55,25 @@ func (c *Client) Start() error {
 
 	n, err := conn.Read(ipp)
 	if err != nil {
+		log.Printf("Error while reading handshake data\n")
 		return err
 	}
 
 	if n == 1 && ipp[0] == 0 {
+		log.Printf("Handshake unsuccessful: no IPs available for lease\n")
 		return errors.New("no IPs available on the server")
 	}
 
 	if n != 9 {
+		log.Printf("Handshake unsuccessful: invalid handshake data length\n")
 		return errors.New("invalid handshake")
 	}
 
 	conn.Write([]byte{1})
+	subnetIP := fmt.Sprintf("%d.%d.%d.%d", ipp[0], ipp[1], ipp[2], ipp[3])
 
-	fmt.Println("Connection Successful... IP Lease done : ", ipp)
+	log.Printf("Handshake successful\n")
+	log.Printf("VPC IP leased : %s", subnetIP)
 
 	cc := &CounterConn{conn: conn}
 
