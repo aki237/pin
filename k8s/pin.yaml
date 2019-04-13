@@ -1,0 +1,49 @@
+## Deployment configuration for pin
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pin
+  labels:
+    app: pin
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pin
+  template:
+    metadata:
+      labels:
+        app: pin
+    spec:
+      containers:
+      - name: pin
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "250m"
+        image: registry.gitlab.com/aki237/pin:latest
+        ports:
+        - containerPort: 9090
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+              - NET_RAW
+        env:
+        - name: SECRET
+          value: "SOME_SECRET"
+---
+## Service mapping to the deployment
+## LoadBalancer creates a new load balancer
+kind: Service
+apiVersion: v1
+metadata:
+  name: pin
+spec:
+  selector:
+    app: pin
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 9090
+    targetPort: 9090
