@@ -1,14 +1,45 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 // RunMode specifies the mode in which the program is run as
 type RunMode int
+
+// String method implements the stringer interface
+func (r RunMode) String() string {
+	if r == SERVER {
+		return "server"
+	}
+
+	return "client"
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for this enum type.
+func (r *RunMode) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	x := ""
+	if err := unmarshal(&x); err != nil {
+		return err
+	}
+
+	fmt.Println("Debug::YAMLUnmarshal: runMode : ", x)
+	switch strings.ToLower(x) {
+	case "server":
+		*r = SERVER
+	case "client":
+		*r = CLIENT
+	default:
+		return errors.New("invalid runMode passed: expects either 'client' or 'server'")
+	}
+
+	return nil
+}
 
 // All the available RunModes
 const (
@@ -18,13 +49,13 @@ const (
 
 // Config struct is used to store the values parsed from the config file
 type Config struct {
-	Mode          RunMode
-	Address       string
-	MTU           int
-	InterfaceName string
-	DHCP          string
-	DNS           []string
-	Secret        string
+	Mode          RunMode  `yaml:"mode"`
+	Address       string   `yaml:"address"`
+	MTU           int      `yaml:"mtu"`
+	InterfaceName string   `yaml:"interfaceName"`
+	DHCP          string   `yaml:"dhcp"`
+	DNS           []string `yaml:"dns"`
+	Secret        string   `yaml:"secret"`
 }
 
 // NewConfigFromFile is used to read configuration data from provided filename and return a Config struct
@@ -35,26 +66,13 @@ func NewConfigFromFile(filename string) (*Config, error) {
 		return nil, err
 	}
 
-	lines := strings.Split(string(contents), "\n")
-
 	config := &Config{}
 
-	for i, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		vals := strings.SplitN(line, ":", 2)
-		if len(vals) != 2 {
-			return nil, fmt.Errorf("Config parse error : error in line %d. Expected a key palue pair separated by ':'", i)
-		}
-		key := strings.TrimSpace(vals[0])
-		val := strings.TrimSpace(vals[1])
-		err = config.setValueForKey(i, key, val)
-		if err != nil {
-			return nil, fmt.Errorf("Config parse error : error in line %d. Expected a key palue pair separated by ':'", i)
-		}
+	err = yaml.Unmarshal(contents, config)
+	if err != nil {
+		return nil, err
 	}
+
 	if config.Address == "" {
 		return nil, fmt.Errorf("Config parse error : no address specified")
 	}
@@ -64,37 +82,4 @@ func NewConfigFromFile(filename string) (*Config, error) {
 	}
 
 	return config, nil
-}
-
-func (config *Config) setValueForKey(i int, key, val string) error {
-	switch key {
-	case "Mode":
-		switch val {
-		case "client":
-			config.Mode = CLIENT
-		case "server":
-			config.Mode = SERVER
-		default:
-			return fmt.Errorf("Config parse error : unknown keyword in line %d for %s. Expected %s or %s", i, key, "client", "server")
-		}
-	case "Address":
-		config.Address = val
-	case "MTU":
-		mtu, err := strconv.Atoi(val)
-		if err != nil {
-			return fmt.Errorf("Config parse error : a number expected for mtu ; %s", err)
-		}
-		config.MTU = mtu
-	case "Interface":
-		config.InterfaceName = val
-	case "DHCP":
-		config.DHCP = val
-	case "Secret":
-		config.Secret = val
-	case "DNS":
-		config.DNS = removeEmptiesAndStrip(strings.Split(val, ","))
-	default:
-		return fmt.Errorf("Config parse error : garbage values ignored, '%s'", key)
-	}
-	return nil
 }
