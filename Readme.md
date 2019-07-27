@@ -20,47 +20,50 @@ In both the ends (server and the client), the usage is simple :
 
 ## Configuration Syntax
 
-The configuration syntax is simple (as usual :P):
+The configuration syntax is just yaml:
 
-```conf
+```yaml
 # Comments are awesome...
 # Commented line begins with a hash
 #
 # What mode to run as : client server
-Mode : client
+mode : server
 #
 # For clients, Address is the info of the remote server. Example : 12.13.14.15:9090
 # For servers, it is the address to listen at. Example : 0.0.0.0:9090 (you know listen at all interfaces stuff...)
-Address : addre.ss:9067
+address : raghuspeaks.com:9090
 #
 # For the serious folks, you can set the MTU for optimised speed or CPU usage
 # If this is to be changed, pls change it for the tunneling interface too.
 # If you have no idea what this does, just leave it as 1500 or just don't specify this.
-MTU : 1500
+mtu : 1500
 #
 # What should be the name of the interface. This only works in Linux.
 # Seriously you can go wild... I tried poniesareawesome... But apparently
 # IFNAMSIZ in /usr/include/linux/if.h said only 16 characters allowed :'(
 # So I got only "poniesareawesom". (\0 makes it 16.)
 # For other platforms, you are stuck with tun{\d}. Sad??
-Interface : pin0
+interface : pin0
 #
 # Ok Let's get serious. This is a secret key. Shared by both server and 
 # the client (Symmetric). How to generate this secret??? That will be stated down below.
-Secret : u7ZQZWomGPHG0GKqoe8E7Vg+hgIxiYnn7Yr4HBz4VWs=
+secret : u7ZQZWomGPHG0GKqoe8E7Vg+hgIxiYnn7Yr4HBz4VWs=
 #
 # For the server folks... You know what this is. DHCP.. No not an actual DHCP running inside.
 # But for provision and Connection Identification.
-DHCP : 10.10.0.1/24
+dhcp : 10.10.0.1/24
 #
 # For the client side, optionally DNS can be setup by using the DNS option
 # Multiple DNS server IPs can be specified by separating them with a comma like the following :
-DNS : 1.1.1.1, 8.8.8.8, 4.4.2.2
+dns : 
+  - 1.1.1.1
+  - 8.8.8.8
+  - 4.4.2.2
 ```
 
 # Secret Generation
 
-The program uses, ChaCha20 as the encryption algorithm. Which requires a 32 byte key.
+The program uses, ChaCha20Poly1305 as the encryption algorithm. Which requires a 32 byte key.
 
 So let's generate a key.
 (If you didn't notice, that key specified is a base64 encoded string.)
@@ -86,6 +89,7 @@ This works for me in my university. Feel free to fork it, modify it, use it and 
 # Roadmap
  + ~~Unique nonce generation for every client (connection)~~
  + ~~Add a message authentication layer for integrity~~
+ + User based secret authentication
  + Time based key variation.
 
 # Contributors
