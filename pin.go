@@ -15,6 +15,7 @@ func RunPin(config *Config, c chan os.Signal) {
 	session, err := GetSessionForConfig(config)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	go func() {
