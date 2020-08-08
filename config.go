@@ -49,13 +49,16 @@ const (
 
 // Config struct is used to store the values parsed from the config file
 type Config struct {
-	Mode          RunMode  `yaml:"mode"`
-	Address       string   `yaml:"address"`
-	MTU           int      `yaml:"mtu"`
-	InterfaceName string   `yaml:"interfaceName"`
-	DHCP          string   `yaml:"dhcp"`
-	DNS           []string `yaml:"dns"`
-	Secret        string   `yaml:"secret"`
+	Mode                 RunMode           `yaml:"mode"`
+	Address              string            `yaml:"address"`
+	MTU                  int               `yaml:"mtu"`
+	InterfaceName        string            `yaml:"interfaceName"`
+	DHCP                 string            `yaml:"dhcp"`
+	DNS                  []string          `yaml:"dns"`
+	Secret               string            `yaml:"secret"`
+	PostInitScript       map[string]string `yaml:"postServerInit"`
+	PostConnectScript    map[string]string `yaml:"postConnect"`
+	PostDisconnectScript map[string]string `yaml:"postDisconnect"`
 }
 
 // NewConfigFromFile is used to read configuration data from provided filename and return a Config struct

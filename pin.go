@@ -25,16 +25,16 @@ func RunPin(config *Config, c chan os.Signal) {
 			return
 		}
 		session.peer.Close()
-		fmt.Print("\r")
+		fmt.Print("\r Closing stuff")
 	}()
+
+	if session.Mode != SERVER {
+		defer session.StopClient()
+	}
 
 	err = session.peer.Start()
 	if err != nil {
 		fmt.Println(err)
-	}
-
-	if session.Mode != SERVER {
-		session.StopClient()
 	}
 }
 
@@ -44,6 +44,14 @@ func GetSessionForConfig(config *Config) (*Session, error) {
 	var session *Session = &Session{}
 	session.Config = config
 	iface := NewTUN(&session.InterfaceName)
+
+	remoteAddress, err := net.ResolveTCPAddr("tcp", session.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	session.RemotePort = remoteAddress.Port
+	session.ResolvedRemoteIP = remoteAddress.IP
 
 	secretdec, err := base64.StdEncoding.DecodeString(session.Secret)
 	if err != nil {
