@@ -5,9 +5,6 @@
 pin a simple tunnel client and server which is configured to act as a VPN by default.
 It is tested and known to work in Linux (obviously), FreeBSD , DragonflyBSD, NetBSD and OpenBSD*
 
-It used to work on windows with the TUN/TAP driver. But again the routing system and the inconsistencies of windows
-seriously pissed me off, so killed its support.
-
 * *OpenBSD : might have to check again*
 
 ## Usage
@@ -59,6 +56,59 @@ dns :
   - 1.1.1.1
   - 8.8.8.8
   - 4.4.2.2
+
+# All the post init stuff is moved out of the Go code.
+# Now `pin` exports all the required variables which will be helpful to
+# write iptables (pf/ip/[any tool]) rules. The following sections will contain
+# platform specific scripting. For example in postServerInit if linux, freebsd
+# and openbsd are defined, then only the script defined for the platform which pin
+# is running on will be executed.
+
+# postServerInit should contains the shell script template (see Go templates)
+# which will be run after the pin VPN server is started. See setup.go#L77 to see
+# the list of all the exported variables.
+postServerInit:
+  linux: |
+    sysctl -w net.ipv4.ip_forward=1
+    ip link set dev {{.interfaceName}}  mtu {{.mtu}}
+    ip link set {{.interfaceName}} up
+
+    ip addr add {{.tunIP}} dev {{.interfaceName}}
+
+    export DEFAULT_LINK=$(ip route | awk '/default/ { print $5 }')
+    iptables -F
+    iptables -F -t nat
+    iptables -I FORWARD -i {{.interfaceName}} -j ACCEPT
+    iptables -I FORWARD -o {{.interfaceName}} -j ACCEPT
+    iptables -I INPUT -i {{.interfaceName}} -j ACCEPT
+    iptables -t nat -I POSTROUTING -o $DEFAULT_LINK -j MASQUERADE
+
+# Similar to postServerInit postConnect is the shell script that runs in the client
+# system after the local tun device is initialized and connection to the remote is
+# established
+postConnect:
+  linux: |
+    ip link set dev {{.interfaceName}}  mtu {{.mtu}}
+    ip link set {{.interfaceName}} up
+
+    export DEFAULT_GW=$(ip route | awk '/default/ { print $3 }')
+    ip route add {{.remoteIP}} via $DEFAULT_GW
+
+    ip addr add {{.tunIP}} dev {{.interfaceName}}
+    ip route add 0.0.0.0/1 via {{.tunGateway}}
+    ip route add 128.0.0.0/1 via {{.tunGateway}}
+    cp /etc/resolv.conf /tmp/pin.resolv.conf.bckup
+    echo > /etc/resolv.conf
+    {{range $dnsip := .dns}}
+      echo "nameserver {{$dnsip}}" >> /etc/resolv.conf
+    {{end}}
+
+# postDisconnect is run after the client is disconnected from the VPN due to any reason
+# Be it Ctrl-C or remote is not reachable anymore.
+postDisconnect:
+  linux: |
+    ip route del {{.remoteIP}}
+    cp /tmp/pin.resolv.conf.bckup /etc/resolv.conf
 ```
 
 # Secret Generation
@@ -89,6 +139,10 @@ This works for me in my university. Feel free to fork it, modify it, use it and 
 # Roadmap
  + ~~Unique nonce generation for every client (connection)~~
  + ~~Add a message authentication layer for integrity~~
+ + Clean the code
+   - ~~Move post init stuff out of code into shell scripts~~
+   - Organize the Session struct and better os signal handling
+   - cleanup pinlib for client code
  + User based secret authentication
  + Time based key variation.
 
