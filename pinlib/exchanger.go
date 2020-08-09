@@ -43,9 +43,10 @@ func (p *Exchanger) incoming() {
 			return
 		}
 
-		// For openbsd, there is a additional tunnel header to be added.
-		// In this case, the tunnel being used is PPTP so the byte array 0,0,0,2 is used.
-		// See man 4 pppx and /usr/include/net/pipex.h (PIPEX_PROTO_PPTP)
+		// For openbsd, there is a additional tunnel header of Address
+		// family of the packet to be added.
+		//
+		// In this case it is AF_INET (0x02)
 		if runtime.GOOS == "openbsd" {
 			packet = append([]byte{0, 0, 0, 2}, packet[:]...)
 			n = n + 4
