@@ -8,6 +8,8 @@ import (
 	"gitlab.com/sbioa1234/water"
 )
 
+// NewTUN is used to create a TUN device for macOS, FreeBSD, DragonflyBSD,
+// OpenBSD and NetBSD.
 func NewTUN(name *string) *water.Interface {
 	cfg := water.Config{DeviceType: water.TUN}
 

@@ -8,6 +8,7 @@ import (
 	"gitlab.com/sbioa1234/water"
 )
 
+// NewTUN is used to initialize the TUN device in linux.
 func NewTUN(name *string) *water.Interface {
 	cfg := water.Config{DeviceType: water.TUN}
 	cfg.Name = *name

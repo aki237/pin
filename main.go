@@ -3,9 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"gitlab.com/aki237/pin/pinlib"
 )
@@ -50,15 +47,10 @@ func main() {
 		return
 	}
 
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGTSTP)
-
 	pinlib.MTU = config.MTU
 	switch config.Mode {
-	case SERVER:
-		RunPin(config, c)
-	case CLIENT:
-		RunPin(config, c)
+	case SERVER, CLIENT:
+		runPin(config)
 	default:
 		fmt.Println("How did you even make it till here?? `:|")
 	}

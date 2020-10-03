@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"strings"
 
+	"gitlab.com/aki237/pin/pinlib"
 	"gopkg.in/yaml.v2"
 )
 
@@ -85,4 +88,55 @@ func NewConfigFromFile(filename string) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+// GetSession is used to initialize the pin with right type of session
+// (server/client) and peer object.
+func (config *Config) GetSession() (*Session, error) {
+	server := config.Mode == SERVER
+	var err error
+	var session *Session = &Session{}
+	session.Config = config
+	iface := NewTUN(&session.InterfaceName)
+
+	remoteAddress, err := net.ResolveTCPAddr("tcp", session.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	session.RemotePort = remoteAddress.Port
+	session.ResolvedRemoteIP = remoteAddress.IP
+
+	secretdec, err := base64.StdEncoding.DecodeString(session.Secret)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(secretdec) != 32 {
+		return nil, fmt.Errorf("Error : key length mismatch, need 40 got %d", len(secretdec))
+	}
+
+	var kcn [32]byte
+	copy(kcn[:], secretdec)
+
+	if !server {
+		session.peer = pinlib.NewClient(session.Address, iface, kcn)
+
+		session.SetupClient()
+		return session, nil
+	}
+
+	var ipNet *net.IPNet
+	var ip net.IP
+	ip, ipNet, err = net.ParseCIDR(session.DHCP)
+	if err != nil {
+		return nil, err
+	}
+	ipNet.IP = ip
+	session.peer, err = pinlib.NewServer(session.Address, iface, ipNet, kcn)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, session.SetupServer()
 }

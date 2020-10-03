@@ -33,6 +33,8 @@ func runScript(script string) error {
 	return cmd.Run()
 }
 
+// SetupClient is used to setup the post connect
+// hook signal for the client.
 func (s *Session) SetupClient() {
 	client, ok := s.peer.(*pinlib.Client)
 	if !ok {
@@ -67,26 +69,9 @@ func (s *Session) SetupClient() {
 	}
 }
 
-func (s *Session) SetupServer() error {
-	scriptTmpl, ok := s.Config.PostInitScript[runtime.GOOS]
-	if !ok {
-		fmt.Printf("[WARN] No post init script defined for '%s' platform", runtime.GOOS)
-		return nil
-	}
-
-	script, err := executeTemplate(scriptTmpl, map[string]interface{}{
-		"interfaceName": s.InterfaceName,
-		"mtu":           s.MTU,
-		"tunIP":         s.DHCP,
-		"dns":           s.DNS,
-	})
-	if err != nil {
-		return err
-	}
-
-	return runScript(script)
-}
-
+// StopClient is used to run the postDisconnectionScript for platform
+// where it is run. Generally used to reset the DNS configuration which
+// was setup during the postConnect script.
 func (s *Session) StopClient() error {
 	scriptTmpl, ok := s.Config.PostDisconnectScript[runtime.GOOS]
 	if !ok {
@@ -98,6 +83,28 @@ func (s *Session) StopClient() error {
 		"interfaceName": s.InterfaceName,
 		"remoteIP":      s.ResolvedRemoteIP.String(),
 		"remotePort":    s.RemotePort,
+		"mtu":           s.MTU,
+		"tunIP":         s.DHCP,
+		"dns":           s.DNS,
+	})
+	if err != nil {
+		return err
+	}
+
+	return runScript(script)
+}
+
+// SetupServer is used to run the post init server script from
+// the config file.
+func (s *Session) SetupServer() error {
+	scriptTmpl, ok := s.Config.PostInitScript[runtime.GOOS]
+	if !ok {
+		fmt.Printf("[WARN] No post init script defined for '%s' platform", runtime.GOOS)
+		return nil
+	}
+
+	script, err := executeTemplate(scriptTmpl, map[string]interface{}{
+		"interfaceName": s.InterfaceName,
 		"mtu":           s.MTU,
 		"tunIP":         s.DHCP,
 		"dns":           s.DNS,
