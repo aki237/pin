@@ -4,8 +4,15 @@ package pinlib
 import (
 	"fmt"
 	"io"
+	"net"
 	"runtime"
 )
+
+type CallbackConn struct {
+	io.ReadWriteCloser
+	ip       net.IP
+	Callback func()
+}
 
 // Exchanger is the main struct used to enable IP packet transfer between 2 peers
 // This is the basis for functionality of both the client and server
@@ -36,8 +43,8 @@ func (p *Exchanger) incoming() {
 			if p.running {
 				fmt.Println("Incoming_Read: ", err)
 			}
-			if nc, ok := p.conn.(*NotifierConn); ok {
-				nc.Notify()
+			if nc, ok := p.conn.(*CallbackConn); ok {
+				nc.Callback()
 			}
 			p.running = false
 			return
@@ -86,8 +93,8 @@ func (p *Exchanger) outgoing() {
 			if p.running {
 				fmt.Println("Outgoing_Write: ", err)
 			}
-			if nc, ok := p.conn.(*NotifierConn); ok {
-				nc.Notify()
+			if nc, ok := p.conn.(*CallbackConn); ok {
+				nc.Callback()
 			}
 			p.running = false
 			return

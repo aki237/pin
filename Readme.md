@@ -26,9 +26,10 @@ The configuration syntax is just yaml:
 # What mode to run as : client server
 mode : server
 #
-# For clients, Address is the info of the remote server. Example : 12.13.14.15:9090
-# For servers, it is the address to listen at. Example : 0.0.0.0:9090 (you know listen at all interfaces stuff...)
-address : raghuspeaks.com:9090
+# For clients, Address is the info of the remote server. Example : [PROTO]://12.13.14.15:9090
+# For servers, it is the address to listen at. Example : [PROTO]://0.0.0.0:9090 (you know listen at all interfaces stuff...)
+# The PROTO argument can be either `tcp` or `udp`
+address : udp://pin.erred.dev:9090
 #
 # For the serious folks, you can set the MTU for optimised speed or CPU usage
 # If this is to be changed, pls change it for the tunneling interface too.

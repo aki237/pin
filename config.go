@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"gitlab.com/aki237/pin/pinlib"
@@ -31,7 +33,6 @@ func (r *RunMode) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	fmt.Println("Debug::YAMLUnmarshal: runMode : ", x)
 	switch strings.ToLower(x) {
 	case "server":
 		*r = SERVER
@@ -50,15 +51,73 @@ const (
 	CLIENT
 )
 
+// Protocol is a enum type defining all the supported protocol types
+type Protocol string
+
+// All the supported protocol types
+const (
+	TCP Protocol = "tcp"
+	UDP          = "udp"
+)
+
+// Address contains the parsed address of the passed
+type Address struct {
+	Protocol Protocol
+	Host     string
+	IP       net.IP
+	Port     int
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for the Address struct
+func (a *Address) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	x := ""
+	if err := unmarshal(&x); err != nil {
+		return err
+	}
+
+	uri, err := url.Parse(x)
+	if err != nil {
+		return errors.New("invalid address passed")
+	}
+
+	a.Host = uri.Hostname()
+	if a.Host == "" {
+		return fmt.Errorf("invalid server address: host not found")
+	}
+
+	ipaddr, err := net.ResolveIPAddr("ip", a.Host)
+	if err != nil {
+		return err
+	}
+	a.IP = ipaddr.IP
+
+	a.Port, _ = strconv.Atoi(uri.Port())
+	if a.Port == 0 {
+		return fmt.Errorf("invalid server address: port not found")
+	}
+
+	switch uri.Scheme {
+	case "tcp", "TCP":
+		a.Protocol = TCP
+	case "udp", "UDP":
+		a.Protocol = UDP
+	default:
+		return fmt.Errorf("invalid protocol passed: expects either 'tcp' or 'udp', got %s", uri.Scheme)
+	}
+
+	return nil
+}
+
 // Config struct is used to store the values parsed from the config file
 type Config struct {
 	Mode                 RunMode           `yaml:"mode"`
-	Address              string            `yaml:"address"`
+	Address              Address           `yaml:"address"`
 	MTU                  int               `yaml:"mtu"`
 	InterfaceName        string            `yaml:"interfaceName"`
 	DHCP                 string            `yaml:"dhcp"`
 	DNS                  []string          `yaml:"dns"`
 	Secret               string            `yaml:"secret"`
+	Motd                 string            `yaml:"motd"`
 	PostInitScript       map[string]string `yaml:"postServerInit"`
 	PostConnectScript    map[string]string `yaml:"postConnect"`
 	PostDisconnectScript map[string]string `yaml:"postDisconnect"`
@@ -79,10 +138,6 @@ func NewConfigFromFile(filename string) (*Config, error) {
 		return nil, err
 	}
 
-	if config.Address == "" {
-		return nil, fmt.Errorf("Config parse error : no address specified")
-	}
-
 	if config.MTU <= 0 {
 		config.MTU = 1500
 	}
@@ -99,13 +154,8 @@ func (config *Config) GetSession() (*Session, error) {
 	session.Config = config
 	iface := NewTUN(&session.InterfaceName)
 
-	remoteAddress, err := net.ResolveTCPAddr("tcp", session.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	session.RemotePort = remoteAddress.Port
-	session.ResolvedRemoteIP = remoteAddress.IP
+	session.RemotePort = config.Address.Port
+	session.ResolvedRemoteIP = config.Address.IP
 
 	secretdec, err := base64.StdEncoding.DecodeString(session.Secret)
 	if err != nil {
@@ -120,7 +170,7 @@ func (config *Config) GetSession() (*Session, error) {
 	copy(kcn[:], secretdec)
 
 	if !server {
-		session.peer = pinlib.NewClient(session.Address, iface, kcn)
+		session.peer = pinlib.NewClient(session.Address.IP, session.Address.Port, string(session.Address.Protocol), iface, kcn)
 
 		session.SetupClient()
 		return session, nil
@@ -133,10 +183,17 @@ func (config *Config) GetSession() (*Session, error) {
 		return nil, err
 	}
 	ipNet.IP = ip
-	session.peer, err = pinlib.NewServer(session.Address, iface, ipNet, kcn)
+	peer, err := pinlib.NewServer(session.Address.IP, session.Address.Port, string(session.Address.Protocol), iface, ipNet, kcn)
 	if err != nil {
 		return nil, err
 	}
+
+	motd := [128]byte{}
+	copy(motd[:], config.Motd)
+
+	peer.SetMotd(motd)
+
+	session.peer = peer
 
 	return session, session.SetupServer()
 }
